@@ -1,8 +1,8 @@
-local CREATURE_ID = 9000011 -- Reanu Keeves
+local CREATURE_ID = 9000011
 local RESET_TEXT = "Reset all my instance locks."
 local RESET_POPUP = "Do you want to reset all your instance locks?"
 local RESET_MSG = "Your instance locks were reset!"
-local RESET_COST = 4000000 -- 4000000 Copper = 400 Gold
+local RESET_COST = 500000
 
 local function OnGossipHello(event, player, unit)
     player:GossipMenuAddItem(6, RESET_TEXT, 1, 1, false, RESET_POPUP, RESET_COST)
@@ -15,7 +15,6 @@ local function OnGossipSelect(event, player, object, sender, intid, code, menu_i
         player:UnbindAllInstances()
         object:SendChatMessageToPlayer(0, 0, RESET_MSG, player)
     end
-
     player:GossipComplete()
 end
 
