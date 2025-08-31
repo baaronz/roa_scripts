@@ -1,1 +1,1 @@
-# roa_scripts
+# Lua Scripts used for running the Realms of Azeroth realms.
