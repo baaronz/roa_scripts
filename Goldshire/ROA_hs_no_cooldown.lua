@@ -1,20 +1,17 @@
-local hs_no_coldown = true
+local hearthstone_spell_id = 8690
+local reset_delay = 50
 
-local HSN = {}
-
-function HSN.OnHsCast(e, p, s, c)
-	local spell_id = s:GetEntry()
-	
-	if spell_id == 8690 then
-		p:RegisterEvent(HSN.OnHsResetDelay, 50, 0, p)
-	end
+function OnHearthstoneCast(event, player, spell, cast)
+    local spell_id = spell:GetEntry()
+    
+    if spell_id == hearthstone_spell_id then
+        player:RegisterEvent(OnHearthstoneResetDelay, reset_delay, 0, player)
+    end
 end
 
-function HSN.OnHsResetDelay(i, d, r, p)
-	p:ResetSpellCooldown(8690)
-	p:RemoveEventById(i)
+function OnHearthstoneResetDelay(event_id, delay, repeats, player)
+    player:ResetSpellCooldown(hearthstone_spell_id)
+    player:RemoveEventById(event_id)
 end
 
-if hs_no_coldown then
-	RegisterPlayerEvent(5, HSN.OnHsCast)
-end
+RegisterPlayerEvent(5, OnHearthstoneCast)
