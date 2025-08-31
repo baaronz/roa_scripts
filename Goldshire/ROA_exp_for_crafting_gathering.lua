@@ -1,19 +1,6 @@
 local TABLE_NAME = "xp_bonus_enable"
 local DEFAULT_NUM = 1
 
-local function CreateXPRateTable()
-    CharDBExecute([[
-        CREATE TABLE IF NOT EXISTS ]] .. TABLE_NAME .. [[ (
-            guid INT UNSIGNED NOT NULL PRIMARY KEY,
-            num INT NOT NULL DEFAULT ]] .. DEFAULT_NUM .. [[
-        )
-    ]])
-end
-
-local function OnServerStartup(event)
-    CreateXPRateTable()
-end
-
 local function SetEnabled(player, num)
     local guid = player:GetGUIDLow()
     CharDBExecute("INSERT INTO " .. TABLE_NAME .. " (guid, num) VALUES (" .. guid .. ", " .. num .. ") ON DUPLICATE KEY UPDATE num = " .. num)
@@ -146,5 +133,4 @@ end
 
 RegisterPlayerEvent(52, OnCreateItem)
 RegisterPlayerEvent(32, OnLootItem)
-RegisterServerEvent(14, OnServerStartup)
 RegisterPlayerEvent(42, OnCommand)
