@@ -13,7 +13,16 @@ if AIO.AddAddon() then
         local guid = player:GetGUIDLow()
         local result = CharDBQuery("SELECT guid FROM " .. TABLE_NAME .. " WHERE guid = " .. guid)
         if not result then
-            CharDBExecute("INSERT INTO " .. TABLE_NAME .. " (guid, xp_rate, override, enabler) VALUES (" .. guid .. ", " .. DEFAULT_XP_RATE .. ", 1, 1)")
+            -- Check if there's an existing XP rate for this account
+            local accountId = player:GetAccountId()
+            local accountResult = CharDBQuery("SELECT xp_rate FROM " .. TABLE_NAME .. " WHERE guid IN (SELECT guid FROM characters WHERE account = " .. accountId .. ") LIMIT 1")
+            
+            local xpRate = DEFAULT_XP_RATE
+            if accountResult then
+                xpRate = accountResult:GetFloat(0)
+            end
+            
+            CharDBExecute("INSERT INTO " .. TABLE_NAME .. " (guid, xp_rate, override, enabler) VALUES (" .. guid .. ", " .. xpRate .. ", 1, 1)")
         end
 
         if player:HasSpell(98122) == false then
@@ -25,6 +34,20 @@ if AIO.AddAddon() then
     end
 
     local function SetXPRate(player, rate)
+        local accountId = player:GetAccountId()
+        
+        -- Get all characters for this account
+        local result = CharDBQuery("SELECT guid FROM characters WHERE account = " .. accountId)
+        
+        if result then
+            repeat
+                local charGuid = result:GetUInt32(0)
+                -- Apply XP rate to each character
+                CharDBExecute("INSERT INTO " .. TABLE_NAME .. " (guid, xp_rate) VALUES (" .. charGuid .. ", " .. rate .. ") ON DUPLICATE KEY UPDATE xp_rate = " .. rate)
+            until not result:NextRow()
+        end
+        
+        -- Also update the current character's rate
         local guid = player:GetGUIDLow()
         CharDBExecute("INSERT INTO " .. TABLE_NAME .. " (guid, xp_rate) VALUES (" .. guid .. ", " .. rate .. ") ON DUPLICATE KEY UPDATE xp_rate = " .. rate)
     end
@@ -106,7 +129,7 @@ if AIO.AddAddon() then
             end
 
             if rate and rate >= 0 then
-                SetXPRate(player, rate, false)
+                SetXPRate(player, rate)
                 player:SendBroadcastMessage("|c979ABDFFYour XP rate has been set to " .. rate .. ".|r")
             end
             return false
