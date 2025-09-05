@@ -13,6 +13,7 @@ local function OnGossipSelect(event, player, object, sender, intid, code, menu_i
     local posz = WorldDBQuery("SELECT position_z FROM gameobject WHERE guid = " .. gobjguid1)
     local poso = WorldDBQuery("SELECT orientation FROM gameobject WHERE guid = " .. gobjguid1)
 
+    local posxnum = tostring(posx)
     local posx1 = math.floor(posx + 0.01)
 
     if intid == 1 then
