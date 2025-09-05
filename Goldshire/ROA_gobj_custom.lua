@@ -25,7 +25,7 @@ local function OnGossipSelect(event, player, object, sender, intid, code, menu_i
         player:SendBroadcastMessage("Gobj GUID: " .. gobjguid1)
         player:SendBroadcastMessage("PosX: " .. posxnum .. "PosY: " .. posynum .. "PosZ: " .. posznum .. "PosO: " .. posonum)
         player:SendBroadcastMessage("PosX1: " .. posx1)
-        object:SpawnCreature(63003, posx1, posy, posz, poso, 6, 20)
+        object:SpawnCreature(63003, posx1, posynum, posznum, posonum, 6, 20)
     end
     player:GossipComplete()
 end
