@@ -18,14 +18,14 @@ local function OnGossipSelect(event, player, object, sender, intid, code, menu_i
     local posznum = posz:GetFloat(0)
     local posonum = poso:GetFloat(0)
     
-    local posx1 = math.floor(posxnum + 0.01)
+    local posxnum1 = math.floor(posxnum + 0.01)
 
     if intid == 1 then
         player:SendBroadcastMessage("You have placed your palm on the stone")
         player:SendBroadcastMessage("Gobj GUID: " .. gobjguid1)
-        player:SendBroadcastMessage("PosX: " .. posxnum .. "PosY: " .. posynum .. "PosZ: " .. posznum .. "PosO: " .. posonum)
-        player:SendBroadcastMessage("PosX1: " .. posx1)
-        object:SpawnCreature(63003, posx1, posynum, posznum, posonum, 6, 20)
+        player:SendBroadcastMessage("PosX: " .. posxnum .. " PosY: " .. posynum .. " PosZ: " .. posznum .. " PosO: " .. posonum)
+        player:SendBroadcastMessage("PosX1: " .. posxnum)
+        object:SpawnCreature(63003, posxnum, posynum, posznum, posonum, 6, 20)
     end
     player:GossipComplete()
 end
