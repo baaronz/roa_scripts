@@ -5,7 +5,7 @@ local function OnGossipHello(event, player, object)
 end
 
 local function OnGossipSelect(event, player, object, sender, intid, code, menu_id)
-    local gobjguid = object:GetGUIDLow()
+    local gobjguid = object:GetEntry()
     local gobjguid1 = tostring(gobjguid)
     if intid == 1 then
         player:SendBroadcastMessage("You have placed your palm on the stone")
