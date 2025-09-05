@@ -5,7 +5,7 @@ local function OnGossipHello(event, player, object)
 end
 
 local function OnGossipSelect(event, player, object, sender, intid, code, menu_id)
-    local gobjguid = object:GetEntry()
+    local gobjguid = object:GetDBTableGUIDLow()
     local gobjguid1 = tostring(gobjguid)
 
     local posx = WorldDBQuery("SELECT position_x FROM gameobject WHERE guid = " .. gobjguid1)
@@ -18,14 +18,15 @@ local function OnGossipSelect(event, player, object, sender, intid, code, menu_i
     local posznum = posz:GetFloat(0)
     local posonum = poso:GetFloat(0)
     
-    local posxnum1 = math.floor(posxnum + 0.01)
+    local posxnum1 = posxnum + 0.05
 
     if intid == 1 then
         player:SendBroadcastMessage("You have placed your palm on the stone")
         player:SendBroadcastMessage("Gobj GUID: " .. gobjguid1)
         player:SendBroadcastMessage("PosX: " .. posxnum .. " PosY: " .. posynum .. " PosZ: " .. posznum .. " PosO: " .. posonum)
-        player:SendBroadcastMessage("PosX1: " .. posxnum)
-        object:SpawnCreature(63003, posxnum, posynum, posznum, posonum, 7)
+        player:SendBroadcastMessage("PosX1: " .. posxnum1)
+        object:SpawnCreature(63003, posxnum1, posynum, posznum, posonum, 6, 30000)
+        player:Teleport(0, posxnum1, posynum, posznum, posonum)
     end
     player:GossipComplete()
 end
