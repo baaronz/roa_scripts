@@ -23,7 +23,7 @@ local function OnGossipSelect(event, player, object, sender, intid, code, menu_i
     if intid == 1 then
         player:SendBroadcastMessage("You have placed your palm on the stone")
         player:SendBroadcastMessage("Gobj GUID: " .. gobjguid1)
-        player:SendBroadcastMessage("PosX: " .. posx .. "PosY: " .. posy .. "PosZ: " .. posz .. "PosO: " .. poso)
+        player:SendBroadcastMessage("PosX: " .. posxnum .. "PosY: " .. posynum .. "PosZ: " .. posznum .. "PosO: " .. posonum)
         player:SendBroadcastMessage("PosX1: " .. posx1)
         object:SpawnCreature(63003, posx1, posy, posz, poso, 6, 20)
     end
