@@ -2,7 +2,6 @@ local npc_id = 9000038
 
 -- Array of buff spell IDs to apply to the party/raid
 local BUFF_SPELLS = {
-    16609, -- Warchiefs Blessing
     22888, -- Rallying Cry
     24425  -- Spirit of Zandalar
 }
