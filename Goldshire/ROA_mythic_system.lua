@@ -11,6 +11,7 @@ if AIO.AddAddon() then
     
     local ALLOWED_MAP_IDS = { 409 }
     local MYTHIC_SCAN_RADIUS = 500
+    local DEAD_CREATURE_CHECK_RADIUS = 1000
     local TELEPORT_DELAY = 5
     local AURA_LOOP_INTERVAL = 20000
     
@@ -95,6 +96,51 @@ if AIO.AddAddon() then
         if not group then return false end
         
         return group:IsLeader(player:GetGUID())
+    end
+    
+    local function CheckForDeadCreatures(player)
+        if not player then return false, 0 end
+        
+        local creatures = player:GetCreaturesInRange(DEAD_CREATURE_CHECK_RADIUS)
+        if not creatures then return false, 0 end
+        
+        local deadCount = 0
+        for _, creature in pairs(creatures) do
+            if creature and not creature:IsAlive() and not creature:IsPlayer() then
+                local faction = creature:GetFaction()
+                local entry = creature:GetEntry()
+                
+                -- Only count hostile creatures, ignore friendly ones
+                if not FRIENDLY_FACTIONS[faction] and not IGNORE_BUFF_ENTRIES[entry] then
+                    deadCount = deadCount + 1
+                end
+            end
+        end
+        
+        return deadCount > 0, deadCount
+    end
+    
+    local function CleanupDeadCreatures(player)
+        if not player then return 0 end
+        
+        local creatures = player:GetCreaturesInRange(DEAD_CREATURE_CHECK_RADIUS)
+        if not creatures then return 0 end
+        
+        local cleanedCount = 0
+        for _, creature in pairs(creatures) do
+            if creature and not creature:IsAlive() and not creature:IsPlayer() then
+                local faction = creature:GetFaction()
+                local entry = creature:GetEntry()
+                
+                -- Only clean up hostile creatures, ignore friendly ones
+                if not FRIENDLY_FACTIONS[faction] and not IGNORE_BUFF_ENTRIES[entry] then
+                    creature:DespawnOrUnsummon(0)
+                    cleanedCount = cleanedCount + 1
+                end
+            end
+        end
+        
+        return cleanedCount
     end
     
     local function TeleportEntireRaid(player)
@@ -234,6 +280,16 @@ if AIO.AddAddon() then
         if MYTHIC_KILL_LOCK[instanceId] then
             player:SendBroadcastMessage("|c979ABDFFCannot start Mythic difficulty because creatures have already been killed. Reset the dungeon to enable Mythic mode.|r")
             return
+        end
+        
+        -- Check for dead creatures in the area and clean them up
+        local hasDeadCreatures, deadCount = CheckForDeadCreatures(player)
+        if hasDeadCreatures then
+            player:SendBroadcastMessage("|c979ABDFFFound " .. deadCount .. " dead creatures in the area. Cleaning up...|r")
+            local cleanedCount = CleanupDeadCreatures(player)
+            if cleanedCount > 0 then
+                player:SendBroadcastMessage("|c979ABDFFCleaned up " .. cleanedCount .. " dead creatures.|r")
+            end
         end
         
         if mythicState.active then
