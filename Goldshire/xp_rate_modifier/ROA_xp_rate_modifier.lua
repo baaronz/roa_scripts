@@ -80,8 +80,36 @@ if AIO.AddAddon() then
     end
 
     local function SetEnabler(player, enabler)
-        local guid = player:GetGUIDLow()
-        CharDBExecute("UPDATE " .. TABLE_NAME .. " SET enabler = " .. enabler .. " WHERE guid = " .. guid)
+        local accountId = player:GetAccountId()
+        
+        -- Get all characters for this account
+        local result = CharDBQuery("SELECT guid FROM characters WHERE account = " .. accountId)
+        
+        if result then
+            repeat
+                local charGuid = result:GetUInt32(0)
+                -- Apply enabler to each character
+                CharDBExecute("UPDATE " .. TABLE_NAME .. " SET enabler = " .. enabler .. " WHERE guid = " .. charGuid)
+            until not result:NextRow()
+        end
+    end
+
+    local function GetAccountCharacterCount(player)
+        local accountId = player:GetAccountId()
+        local result = CharDBQuery("SELECT COUNT(*) FROM characters WHERE account = " .. accountId)
+        if result then
+            return result:GetUInt32(0)
+        end
+        return 0
+    end
+
+    local function GetAccountAffectedCharacterCount(player)
+        local accountId = player:GetAccountId()
+        local result = CharDBQuery("SELECT COUNT(*) FROM " .. TABLE_NAME .. " t INNER JOIN characters c ON t.guid = c.guid WHERE c.account = " .. accountId .. " AND t.enabler = 1")
+        if result then
+            return result:GetUInt32(0)
+        end
+        return 0
     end
 
     local function OnGiveXp(event, player, amount, victim)
@@ -101,51 +129,22 @@ if AIO.AddAddon() then
         end
     end
 
-    local function OnCommand(event, player, command)
-        local cmd, arg = command:match("^(%S+)%s*(%S*)$")
-        if cmd == "setmyxp" then
-            if GetEnabler(player) == 0 then
-                player:SendBroadcastMessage("|c979ABDFFYou can not change your XP rate while XP gain is toggled off.|r")
-                return false
-            end
-
-            local rate = tonumber(arg)
-
-            if rate == nil then
-                player:SendBroadcastMessage("|c979ABDFFThis command will set your XP rate.|r")
-                player:SendBroadcastMessage("|c979ABDFFUsage: .setmyxp (rate)|r")
-                player:SendBroadcastMessage("|c979ABDFFAcceptable range min: 0.1 max: 100|r")
-                return false
-            end
-
-            if rate > 100 then
-                player:SendBroadcastMessage("|c979ABDFFYou can only set your XP rate up to 100.|r")
-                return false
-            end
-
-            if rate < 0.1 then
-                player:SendBroadcastMessage("|c979ABDFFYou can not set your rate lower than 0.1.|r")
-                return false
-            end
-
-            if rate and rate >= 0 then
-                SetXPRate(player, rate)
-                player:SendBroadcastMessage("|c979ABDFFYour XP rate has been set to " .. rate .. ".|r")
-            end
-            return false
-        end
-    end
 
     local function OnSpellCast(event, player, spell, skipCheck)
         local guid = player:GetGUIDLow()
         if spell:GetEntry() == 98123 then
-            if GetEnabler(player) == 0 then
-                CharDBExecute("UPDATE " .. TABLE_NAME .. " SET enabler = 1 WHERE guid = " .. guid)
-                player:SendBroadcastMessage("|c979ABDFFXP gain is now enabled.|r")
-            end
-            if GetEnabler(player) == 1 then
-                CharDBExecute("UPDATE " .. TABLE_NAME .. " SET enabler = 0 WHERE guid = " .. guid)
-                player:SendBroadcastMessage("|c979ABDFFXP gain is now disabled.|r")
+            local currentEnabler = GetEnabler(player)
+            local newEnabler = currentEnabler == 0 and 1 or 0
+            
+            SetEnabler(player, newEnabler)
+            
+            local totalChars = GetAccountCharacterCount(player)
+            local affectedChars = GetAccountAffectedCharacterCount(player)
+            
+            if newEnabler == 1 then
+                player:SendBroadcastMessage("|c979ABDFFXP gain is now enabled for all characters on your account.|r")
+            else
+                player:SendBroadcastMessage("|c979ABDFFXP gain is now disabled for all characters on your account.|r")
             end
             return false
         end
@@ -157,6 +156,7 @@ if AIO.AddAddon() then
             end
             
             local currentRate = GetXPRate(player)
+            
             local xpData = {
                 currentRate = currentRate,
                 playerName = player:GetName()
@@ -174,27 +174,32 @@ if AIO.AddAddon() then
             local newRate = data.rate
             
             if not newRate or type(newRate) ~= "number" then
-                player:SendBroadcastMessage("|c979ABDFFInvalid XP rate provided.|r")
+                player:SendBroadcastMessage("|c979ABDFFERROR: Invalid XP rate provided. Please enter a valid number.|r")
                 return
             end
             
             if newRate < 0.1 then
-                player:SendBroadcastMessage("|c979ABDFFYou can not set your rate lower than 0.1.|r")
+                player:SendBroadcastMessage("|c979ABDFFERROR: XP rate cannot be set below 0.1. Minimum allowed rate is 0.1.|r")
                 return
             end
             
-            if newRate > 100 then
-                player:SendBroadcastMessage("|c979ABDFFYou can only set your XP rate up to 100.|r")
+            if newRate > PLAYER_MAX_XP_RATE then
+                player:SendBroadcastMessage("|c979ABDFFERROR: XP rate cannot exceed " .. PLAYER_MAX_XP_RATE .. ". Maximum allowed rate is " .. PLAYER_MAX_XP_RATE .. ".|r")
                 return
             end
             
             if GetEnabler(player) == 0 then
-                player:SendBroadcastMessage("|c979ABDFFYou can not change your XP rate while XP gain is toggled off.|r")
+                player:SendBroadcastMessage("|c979ABDFFERROR: You cannot change your XP rate while XP gain is toggled off.|r")
                 return
             end
             
             SetXPRate(player, newRate)
-            player:SendBroadcastMessage("|c979ABDFFYour XP rate has been set to " .. newRate .. ".|r")
+            
+            local totalChars = GetAccountCharacterCount(player)
+            local affectedChars = GetAccountAffectedCharacterCount(player)
+            
+            player:SendBroadcastMessage("|c979ABDFFYour XP rate has been set to " .. newRate .. " for all characters on your account.|r")
+            
             AIO.Msg():Add("XPRateModifier", "RateUpdated", {success = true, rate = newRate}):Send(player)
         end
     end
@@ -202,7 +207,6 @@ if AIO.AddAddon() then
     AIO.RegisterEvent("XPRateModifier", HandleXPRateRequest)
 
     RegisterPlayerEvent(12, OnGiveXp) 
-    RegisterPlayerEvent(42, OnCommand) 
     RegisterPlayerEvent(3, OnLogin) 
     RegisterPlayerEvent(5, OnSpellCast)
     
@@ -211,6 +215,7 @@ end
 
 local XPRateModifierAddon = {}
 local isWindowVisible = false
+local PLAYER_MAX_XP_RATE = 100.0  -- Client-side constant to match server
 
 local function CreateXPRateWindow()
     local window = CreateFrame("Frame", "XPRateModifierWindow", UIParent)
@@ -246,7 +251,7 @@ local function CreateXPRateWindow()
     
     window.instructionText = window:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     window.instructionText:SetPoint("TOP", window.currentRateText, "BOTTOM", 0, -8)
-    window.instructionText:SetText("Enter new rate (0.1 - 100):")
+    window.instructionText:SetText("Enter new rate (0.1 - " .. PLAYER_MAX_XP_RATE .. "):")
     window.instructionText:SetTextColor(0.8, 0.8, 0.8, 1)
     
     window.editBox = CreateFrame("EditBox", nil, window)
@@ -364,12 +369,17 @@ function XPRateModifierAddon:ApplyRate()
     local rate = tonumber(rateText)
     
     if not rate then
-        print("Invalid XP rate. Please enter a valid number.")
+        print("|c979ABDFFERROR: Invalid XP rate. Please enter a valid number.|r")
         return
     end
     
-    if rate < 0.1 or rate > 100 then
-        print("XP rate must be between 0.1 and 100.")
+    if rate < 0.1 then
+        print("|c979ABDFFERROR: XP rate cannot be set below 0.1. Minimum allowed rate is 0.1.|r")
+        return
+    end
+    
+    if rate > PLAYER_MAX_XP_RATE then
+        print("|c979ABDFFERROR: XP rate cannot exceed " .. PLAYER_MAX_XP_RATE .. ". Maximum allowed rate is " .. PLAYER_MAX_XP_RATE .. ".|r")
         return
     end
     
