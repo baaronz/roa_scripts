@@ -62,9 +62,9 @@ local function OnSelect(event, player, object, sender, intid, code, menu_id)
         end
         
         if buffedPlayers > 0 then
-            player:SendBroadcastMessage("|cff00ff00Successfully applied " .. totalBuffsApplied .. " buffs to " .. buffedPlayers .. " group member(s)!|r")
+            player:SendBroadcastMessage("|c979ABDFFAdded " .. totalBuffsApplied .. " buffs to " .. buffedPlayers .. " players.|r")
         else
-            player:SendBroadcastMessage("|cffff0000No group members found to buff!|r")
+            player:SendBroadcastMessage("|c979ABDFFNo group members found to buff!|r")
         end
         
     elseif intid == 99 then
