@@ -105,7 +105,7 @@ if AIO.AddAddon() then
         local teleportData = TELEPORT_LOCATIONS[mapId]
         
         if not teleportData then
-            player:SendBroadcastMessage("|cff979ABDFFMythic System:|r No teleport location configured for this map.")
+            player:SendBroadcastMessage("|c979ABDFFNo teleport location configured for this map.|r")
             return
         end
         
@@ -114,7 +114,7 @@ if AIO.AddAddon() then
         if not group then
             -- Single player teleport
             player:Teleport(teleportData.map, teleportData.x, teleportData.y, teleportData.z, teleportData.o)
-            player:SendBroadcastMessage("|cff979ABDFFMythic System:|r You have been teleported to the raid location!")
+            player:SendBroadcastMessage("|c979ABDFFYou have been teleported to the raid location!|r")
             teleportedCount = 1
         else
             -- Raid teleport
@@ -122,14 +122,14 @@ if AIO.AddAddon() then
             for _, member in pairs(members) do
                 if member and member:IsInWorld() and member:IsAlive() then
                     member:Teleport(teleportData.map, teleportData.x, teleportData.y, teleportData.z, teleportData.o)
-                    member:SendBroadcastMessage("|cff979ABDFFMythic System:|r You have been teleported to the raid location!")
+                    member:SendBroadcastMessage("|c979ABDFFYou have been teleported to the raid location!|r")
                     teleportedCount = teleportedCount + 1
                 end
             end
             
             -- Send confirmation to raid leader
             if teleportedCount > 0 then
-                player:SendBroadcastMessage("|cff979ABDFFMythic System:|r Successfully teleported " .. teleportedCount .. " raid members to the mythic location!")
+                player:SendBroadcastMessage("|c979ABDFFSuccessfully teleported " .. teleportedCount .. " raid members to the mythic location!|r")
             end
         end
     end
@@ -214,25 +214,25 @@ if AIO.AddAddon() then
     
     local function ActivateMythicTier(player, tier, npc)
         if not IsMapAllowed(player) then
-            player:SendBroadcastMessage("|cff979ABDFFMythic System:|r This can only be used in specific instances.")
+            player:SendBroadcastMessage("|c979ABDFFThis can only be used in specific instances.|r")
             return
         end
         
         if not IsRaidLeader(player) then
-            player:SendBroadcastMessage("|cff979ABDFFMythic System:|r Only the Raid Leader can start Mythic difficulties.")
+            player:SendBroadcastMessage("|c979ABDFFOnly the Raid Leader can start Mythic difficulties.|r")
             return
         end
         
         local map = player:GetMap()
         if not map then
-            player:SendBroadcastMessage("|cff979ABDFFMythic System:|r No map context.")
+            player:SendBroadcastMessage("|c979ABDFFNo map context.|r")
             return
         end
         
         local instanceId = map:GetInstanceId()
         
         if MYTHIC_KILL_LOCK[instanceId] then
-            player:SendBroadcastMessage("|cff979ABDFFMythic System:|r Cannot start Mythic difficulty because creatures have already been killed. Reset the dungeon to enable Mythic mode.")
+            player:SendBroadcastMessage("|c979ABDFFCannot start Mythic difficulty because creatures have already been killed. Reset the dungeon to enable Mythic mode.|r")
             return
         end
         
@@ -245,9 +245,9 @@ if AIO.AddAddon() then
         mythicState.activatedBy = player:GetName()
         mythicState.activatedTime = os.time()
         
-        player:SendBroadcastMessage("|cff979ABDFFMythic System:|r " .. MYTHIC_TIERS[tier].name .. " will be activated in " .. TELEPORT_DELAY .. " seconds!")
-        player:SendBroadcastMessage("|cff979ABDFFMythic System:|r Activated by: " .. player:GetName())
-        player:SendBroadcastMessage("|cff979ABDFFMythic System:|r Preparing to teleport entire raid to mythic location...")
+        player:SendBroadcastMessage("|c979ABDFF" .. MYTHIC_TIERS[tier].name .. " will be activated in " .. TELEPORT_DELAY .. " seconds!|r")
+        player:SendBroadcastMessage("|c979ABDFFActivated by: " .. player:GetName() .. "|r")
+        player:SendBroadcastMessage("|c979ABDFFPreparing to teleport entire raid to mythic location...|r")
         
         local guid = player:GetGUIDLow()
         local mapId = player:GetMapId()
@@ -257,7 +257,7 @@ if AIO.AddAddon() then
             if p then
                 TeleportEntireRaid(p)
                 ApplyMythicAuras(tier, p)
-                SendWorldMessage("|cff979ABDFFMythic System:|r " .. MYTHIC_TIERS[tier].name .. " has been activated!")
+                SendWorldMessage("|c979ABDFF" .. MYTHIC_TIERS[tier].name .. " has been activated!|r")
                 StartAuraLoop(p, tier, mapId)
             end
         end, TELEPORT_DELAY * 1000, 1)
@@ -265,12 +265,12 @@ if AIO.AddAddon() then
     
     local function ResetMythicMode(player)
         if not IsRaidLeader(player) then
-            player:SendBroadcastMessage("|cff979ABDFFMythic System:|r Only the Raid Leader can return to normal mode.")
+            player:SendBroadcastMessage("|c979ABDFFOnly the Raid Leader can return to normal mode.|r")
             return
         end
         
         if not mythicState.active then
-            player:SendBroadcastMessage("|cff979ABDFFMythic System:|r No mythic mode is currently active.")
+            player:SendBroadcastMessage("|c979ABDFFNo mythic mode is currently active.|r")
             return
         end
         
@@ -288,7 +288,7 @@ if AIO.AddAddon() then
         end
         
         TeleportEntireRaid(player)
-        player:SendBroadcastMessage("|cff979ABDFFMythic System:|r Mythic mode has been reset to normal.")
+        player:SendBroadcastMessage("|c979ABDFFMythic mode has been reset to normal.|r")
     end
     
     local function OnHello(event, player, object)
@@ -330,7 +330,7 @@ if AIO.AddAddon() then
     local function OnSelect(event, player, object, sender, intid, code, menu_id)
         if intid == 0 then
             if not IsRaidLeader(player) then
-                player:SendBroadcastMessage("|cff979ABDFFMythic System:|r Only the Raid Leader can return to normal mode.")
+                player:SendBroadcastMessage("|c979ABDFFOnly the Raid Leader can return to normal mode.|r")
             else
                 ResetMythicMode(player)
             end
@@ -365,7 +365,7 @@ if AIO.AddAddon() then
 
         MYTHIC_KILL_LOCK[instanceId] = true
 
-        local msg = "|cff979ABDFFMythic System:|r Mythic mode is now locked because a hostile enemy was slain. Reset the dungeon to enable Mythic mode."
+        local msg = "|c979ABDFFMythic mode is now locked because a hostile enemy was slain. Reset the dungeon to enable Mythic mode.|r"
         for _, player in pairs(map:GetPlayers() or {}) do
             player:SendBroadcastMessage(msg)
         end
@@ -410,12 +410,12 @@ if AIO.AddAddon() then
                     end
                 end
             end
-            SendWorldMessage("|cff979ABDFFMythic System:|r " .. killed:GetName() .. " has been defeated! All raid members received a " .. mapConfig.token_item_name .. "!")
+            SendWorldMessage("|c979ABDFF" .. killed:GetName() .. " has been defeated! All raid members received a " .. mapConfig.token_item_name .. "!|r")
         end
         
         if entry == mapConfig.final_boss_entry then
-            SendWorldMessage("|cff979ABDFFMythic System:|r " .. mapConfig.final_boss_name .. " has been defeated! Mythic " .. MYTHIC_TIERS[mythicState.currentTier].name .. " completed!")
-            SendWorldMessage("|cff979ABDFFMythic System:|r Congratulations to the raid for completing " .. MYTHIC_TIERS[mythicState.currentTier].name .. "!")
+            SendWorldMessage("|c979ABDFF" .. mapConfig.final_boss_name .. " has been defeated! Mythic " .. MYTHIC_TIERS[mythicState.currentTier].name .. " completed!|r")
+            SendWorldMessage("|c979ABDFFCongratulations to the raid for completing " .. MYTHIC_TIERS[mythicState.currentTier].name .. "!|r")
             
             RemoveAllMythicAuras(killer)
             CleanupMythicInstance()
