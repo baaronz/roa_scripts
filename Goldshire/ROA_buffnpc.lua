@@ -1,9 +1,10 @@
-local npc_id = 500558
+local npc_id = 9000038
 
 -- Array of buff spell IDs to apply to the party/raid
 local BUFF_SPELLS = {
-    1126,
-    1127
+    16609, -- Warchiefs Blessing
+    22888, -- Rallying Cry
+    24425  -- Spirit of Zandalar
 }
 
 local function OnHello(event, player, object)
@@ -16,7 +17,6 @@ end
 local function GetGroupMembers(player)
     local groupMembers = {}
     
-    -- Check if player is in a group or raid
     if player:IsInGroup() then
         local group = player:GetGroup()
         if group then
@@ -28,7 +28,6 @@ local function GetGroupMembers(player)
             end
         end
     else
-        -- If not in group, just buff the player
         table.insert(groupMembers, player)
     end
     
@@ -39,9 +38,7 @@ local function ApplyBuffsToPlayer(targetPlayer, caster)
     local buffsApplied = 0
     
     for _, spellId in ipairs(BUFF_SPELLS) do
-        -- Check if the spell exists and can be cast
         if GetSpellInfo(spellId) then
-            -- Cast the buff on the target player
             caster:CastSpell(targetPlayer, spellId, true)
             buffsApplied = buffsApplied + 1
         end
@@ -56,7 +53,6 @@ local function OnSelect(event, player, object, sender, intid, code, menu_id)
         local totalBuffsApplied = 0
         local buffedPlayers = 0
         
-        -- Apply buffs to all group members
         for _, member in ipairs(groupMembers) do
             if member and member:IsInWorld() then
                 local buffsApplied = ApplyBuffsToPlayer(member, object)
@@ -65,7 +61,6 @@ local function OnSelect(event, player, object, sender, intid, code, menu_id)
             end
         end
         
-        -- Send feedback message
         if buffedPlayers > 0 then
             player:SendBroadcastMessage("|cff00ff00Successfully applied " .. totalBuffsApplied .. " buffs to " .. buffedPlayers .. " group member(s)!|r")
         else
