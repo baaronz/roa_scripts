@@ -40,7 +40,10 @@ if AIO.AddAddon() then
     
     local IGNORE_BUFF_ENTRIES = { [30172] = true, [30173] = true, [29630] = true, [28351] = true, [24137] = true, [37596] = true }
     
-    local DEAD_CREATURE_CHECK_ID = 11658
+    local DEAD_CREATURE_CHECK_IDS = {
+        [409] = 11658, -- Molten Core
+        [469] = 11665  -- Blackwing Lair
+    }
     
     local MYTHIC_TIERS = {
         [1] = {
@@ -103,7 +106,12 @@ if AIO.AddAddon() then
     local function CheckForDeadCreature(npc)
         if not npc then return false end
         
-        local creature = npc:GetNearestCreature(DEAD_CREATURE_CHECK_RADIUS, DEAD_CREATURE_CHECK_ID, 0, 0)
+        local mapId = npc:GetMapId()
+        local checkId = DEAD_CREATURE_CHECK_IDS[mapId]
+        
+        if not checkId then return false end
+        
+        local creature = npc:GetNearestCreature(DEAD_CREATURE_CHECK_RADIUS, checkId, 0, 0)
         if creature then
             return creature:IsDead() == true
         end
