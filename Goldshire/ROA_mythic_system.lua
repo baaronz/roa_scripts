@@ -40,6 +40,8 @@ if AIO.AddAddon() then
     
     local IGNORE_BUFF_ENTRIES = { [30172] = true, [30173] = true, [29630] = true, [28351] = true, [24137] = true, [37596] = true }
     
+    local DEAD_CREATURE_CHECK_ID = 11658
+    
     local MYTHIC_TIERS = {
         [1] = {
             name = "Mythic Tier 1",
@@ -98,57 +100,14 @@ if AIO.AddAddon() then
         return group:IsLeader(player:GetGUID())
     end
     
-    local function CheckForDeadCreatures(player)
-        if not player then return false, 0 end
+    local function CheckForDeadCreature(npc)
+        if not npc then return false end
         
-        local deadCount = 0
-        local map = player:GetMap()
-        if not map then return false, 0 end
-        
-        -- Get all creatures in the map and check if any are dead within range
-        local creatures = map:GetCreaturesInRange(player:GetX(), player:GetY(), player:GetZ(), DEAD_CREATURE_CHECK_RADIUS)
-        if not creatures then return false, 0 end
-        
-        for _, creature in pairs(creatures) do
-            if creature and creature:IsDead() and not creature:IsPlayer() then
-                local faction = creature:GetFaction()
-                local entry = creature:GetEntry()
-                
-                -- Only count hostile creatures, ignore friendly ones
-                if not FRIENDLY_FACTIONS[faction] and not IGNORE_BUFF_ENTRIES[entry] then
-                    deadCount = deadCount + 1
-                end
-            end
+        local creature = npc:GetNearestCreature(DEAD_CREATURE_CHECK_RADIUS, DEAD_CREATURE_CHECK_ID, 0, 0)
+        if creature then
+            return creature:IsDead() == true
         end
-        
-        return deadCount > 0, deadCount
-    end
-    
-    local function CleanupDeadCreatures(player)
-        if not player then return 0 end
-        
-        local cleanedCount = 0
-        local map = player:GetMap()
-        if not map then return 0 end
-        
-        -- Get all creatures in the map and clean up dead ones within range
-        local creatures = map:GetCreaturesInRange(player:GetX(), player:GetY(), player:GetZ(), DEAD_CREATURE_CHECK_RADIUS)
-        if not creatures then return 0 end
-        
-        for _, creature in pairs(creatures) do
-            if creature and creature:IsDead() and not creature:IsPlayer() then
-                local faction = creature:GetFaction()
-                local entry = creature:GetEntry()
-                
-                -- Only clean up hostile creatures, ignore friendly ones
-                if not FRIENDLY_FACTIONS[faction] and not IGNORE_BUFF_ENTRIES[entry] then
-                    creature:DespawnOrUnsummon(0)
-                    cleanedCount = cleanedCount + 1
-                end
-            end
-        end
-        
-        return cleanedCount
+        return false
     end
     
     local function TeleportEntireRaid(player)
@@ -290,19 +249,6 @@ if AIO.AddAddon() then
             return
         end
         
-        -- Check for dead creatures in the area and clean them up
-        local hasDeadCreatures, deadCount = CheckForDeadCreatures(player)
-        if hasDeadCreatures then
-            player:SendBroadcastMessage("|c979ABDFFFound " .. deadCount .. " dead creatures in the area. Cleaning up...|r")
-            local cleanedCount = CleanupDeadCreatures(player)
-            if cleanedCount > 0 then
-                player:SendBroadcastMessage("|c979ABDFFCleaned up " .. cleanedCount .. " dead creatures.|r")
-            else
-                player:SendBroadcastMessage("|c979ABDFFNo dead creatures were cleaned up.|r")
-            end
-        else
-            player:SendBroadcastMessage("|c979ABDFFNo dead creatures found in the area.|r")
-        end
         
         if mythicState.active then
             RemoveAllMythicAuras(player)
@@ -405,6 +351,12 @@ if AIO.AddAddon() then
         elseif intid == 99 then
             player:SendBroadcastMessage("Farewell!")
         elseif MYTHIC_TIERS[intid] then
+            -- Check for dead creature before activation
+            if CheckForDeadCreature(object) then
+                player:SendBroadcastMessage("|c979ABDFFCannot start Mythic difficulty because there are dead creatures in the raid.|r")
+                player:GossipComplete()
+                return
+            end
             ActivateMythicTier(player, intid, object)
         end
         player:GossipComplete()
