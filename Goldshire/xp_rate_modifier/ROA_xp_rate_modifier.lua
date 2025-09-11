@@ -369,17 +369,17 @@ function XPRateModifierAddon:ApplyRate()
     local rate = tonumber(rateText)
     
     if not rate then
-        print("|c979ABDFFERROR: Invalid XP rate. Please enter a valid number.|r")
+        print("|c979ABDFFInvalid XP rate. Please enter a valid number.|r")
         return
     end
     
     if rate < 0.1 then
-        print("|c979ABDFFERROR: XP rate cannot be set below 0.1. Minimum allowed rate is 0.1.|r")
+        print("|c979ABDFFXP rate cannot be set below 0.1. Minimum allowed rate is 0.1.|r")
         return
     end
     
     if rate > PLAYER_MAX_XP_RATE then
-        print("|c979ABDFFERROR: XP rate cannot exceed " .. PLAYER_MAX_XP_RATE .. ". Maximum allowed rate is " .. PLAYER_MAX_XP_RATE .. ".|r")
+        print("|c979ABDFFXP rate cannot exceed " .. PLAYER_MAX_XP_RATE .. ". Maximum allowed rate is " .. PLAYER_MAX_XP_RATE .. ".|r")
         return
     end
     
