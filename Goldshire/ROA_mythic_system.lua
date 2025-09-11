@@ -101,12 +101,16 @@ if AIO.AddAddon() then
     local function CheckForDeadCreatures(player)
         if not player then return false, 0 end
         
-        local creatures = player:GetCreaturesInRange(DEAD_CREATURE_CHECK_RADIUS)
+        local deadCount = 0
+        local map = player:GetMap()
+        if not map then return false, 0 end
+        
+        -- Get all creatures in the map and check if any are dead within range
+        local creatures = map:GetCreaturesInRange(player:GetX(), player:GetY(), player:GetZ(), DEAD_CREATURE_CHECK_RADIUS)
         if not creatures then return false, 0 end
         
-        local deadCount = 0
         for _, creature in pairs(creatures) do
-            if creature and not creature:IsAlive() and not creature:IsPlayer() then
+            if creature and creature:IsDead() and not creature:IsPlayer() then
                 local faction = creature:GetFaction()
                 local entry = creature:GetEntry()
                 
@@ -123,12 +127,16 @@ if AIO.AddAddon() then
     local function CleanupDeadCreatures(player)
         if not player then return 0 end
         
-        local creatures = player:GetCreaturesInRange(DEAD_CREATURE_CHECK_RADIUS)
+        local cleanedCount = 0
+        local map = player:GetMap()
+        if not map then return 0 end
+        
+        -- Get all creatures in the map and clean up dead ones within range
+        local creatures = map:GetCreaturesInRange(player:GetX(), player:GetY(), player:GetZ(), DEAD_CREATURE_CHECK_RADIUS)
         if not creatures then return 0 end
         
-        local cleanedCount = 0
         for _, creature in pairs(creatures) do
-            if creature and not creature:IsAlive() and not creature:IsPlayer() then
+            if creature and creature:IsDead() and not creature:IsPlayer() then
                 local faction = creature:GetFaction()
                 local entry = creature:GetEntry()
                 
@@ -289,7 +297,11 @@ if AIO.AddAddon() then
             local cleanedCount = CleanupDeadCreatures(player)
             if cleanedCount > 0 then
                 player:SendBroadcastMessage("|c979ABDFFCleaned up " .. cleanedCount .. " dead creatures.|r")
+            else
+                player:SendBroadcastMessage("|c979ABDFFNo dead creatures were cleaned up.|r")
             end
+        else
+            player:SendBroadcastMessage("|c979ABDFFNo dead creatures found in the area.|r")
         end
         
         if mythicState.active then
