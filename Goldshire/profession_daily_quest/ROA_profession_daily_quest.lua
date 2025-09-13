@@ -5,11 +5,89 @@ if not AIO.IsMainState() then
 end
 
 if AIO.AddAddon() then
-    print("HeroesCallBoard: Server side script loaded!")
+    print("ProfessionDailyQuest: Server side script loaded!")
     
-    local function GetCallBoardQuests(player)
+    -- Configuration
+    local DAILY_QUEST_LIMIT = 2
+    local NPC_ENTRY_ID = 60605 -- Change this to your NPC entry ID
+    
+    -- Helper function to get today's date string
+    local function GetTodayDateString()
+        return os.date("%Y-%m-%d")
+    end
+    
+    -- Helper function to get player's daily quest progress
+    local function GetPlayerDailyProgress(player)
+        local playerGuid = player:GetGUIDLow()
+        local today = GetTodayDateString()
+        local result = WorldDBQuery("SELECT quest_id, status FROM player_daily_quest_progress WHERE player_guid = " .. playerGuid .. " AND date_taken = '" .. today .. "'")
+        
+        local takenQuests = {}
+        local completedQuests = {}
+        local totalTaken = 0
+        
+        if result then
+            repeat
+                local questId = result:GetUInt32(0)
+                local status = result:GetString(1)
+                totalTaken = totalTaken + 1
+                
+                if status == "taken" then
+                    table.insert(takenQuests, questId)
+                elseif status == "completed" then
+                    table.insert(completedQuests, questId)
+                end
+            until not result:NextRow()
+        end
+        
+        return takenQuests, completedQuests, totalTaken
+    end
+    
+    -- Helper function to check if player can take more quests
+    local function CanTakeMoreQuests(player)
+        local _, _, totalTaken = GetPlayerDailyProgress(player)
+        return totalTaken < DAILY_QUEST_LIMIT
+    end
+    
+    -- Helper function to add quest progress to database
+    local function AddQuestProgress(player, questId, status)
+        local playerGuid = player:GetGUIDLow()
+        local today = GetTodayDateString()
+        
+        local query = string.format([[
+            INSERT INTO player_daily_quest_progress (player_guid, quest_id, date_taken, status) 
+            VALUES (%d, %d, '%s', '%s') 
+            ON DUPLICATE KEY UPDATE status = '%s'
+        ]], playerGuid, questId, today, status, status)
+        
+        WorldDBExecute(query)
+    end
+    
+    -- Main function to get available profession daily quests
+    local function GetProfessionDailyQuests(player)
         local quests = {}
-        local result = WorldDBQuery("SELECT quest_id, quest_name, description, level_required, level_max, icon, background_image FROM heroes_call_board_quests WHERE active = 1 ORDER BY sort_order ASC, quest_name ASC")
+        local takenQuests, completedQuests, totalTaken = GetPlayerDailyProgress(player)
+        local canTakeMore = CanTakeMoreQuests(player)
+        
+        -- Create lookup tables for faster checking
+        local takenLookup = {}
+        local completedLookup = {}
+        
+        for _, questId in ipairs(takenQuests) do
+            takenLookup[questId] = true
+        end
+        
+        for _, questId in ipairs(completedQuests) do
+            completedLookup[questId] = true
+        end
+        
+        local result = WorldDBQuery([[
+            SELECT quest_id, quest_name, description, level_required, level_max, 
+                   profession_type, icon, background_image, reward_gold, reward_xp 
+            FROM profession_daily_quests 
+            WHERE active = 1 
+            ORDER BY sort_order ASC, quest_name ASC
+        ]])
         
         if result then
             repeat
@@ -18,16 +96,37 @@ if AIO.AddAddon() then
                 local levelMax = result:GetUInt32(4)
                 local playerLevel = player:GetLevel()
                 
-                if not player:HasQuest(questId) and playerLevel >= levelRequired and playerLevel <= levelMax then
+                -- Check if player meets level requirements and doesn't already have the quest
+                if playerLevel >= levelRequired and playerLevel <= levelMax and not player:HasQuest(questId) then
+                    local status = "available"
+                    local buttonText = "Accept Quest"
+                    local canAccept = canTakeMore and not takenLookup[questId] and not completedLookup[questId]
+                    
+                    if completedLookup[questId] then
+                        status = "completed"
+                        buttonText = "Completed"
+                    elseif takenLookup[questId] then
+                        status = "taken"
+                        buttonText = "In Progress"
+                    elseif not canTakeMore then
+                        status = "limit_reached"
+                        buttonText = "Daily Limit Reached"
+                    end
+                    
                     local questData = {
                         questId = questId,
                         title = result:GetString(1),
                         description = result:GetString(2),
                         levelRequired = levelRequired,
                         levelMax = levelMax,
-                        image = result:GetString(5),
-                        backgroundImage = result:GetString(6),
-                        buttonText = "Accept Quest"
+                        professionType = result:GetString(5),
+                        image = result:GetString(6),
+                        backgroundImage = result:GetString(7),
+                        rewardGold = result:GetUInt32(8),
+                        rewardXp = result:GetUInt32(9),
+                        status = status,
+                        buttonText = buttonText,
+                        canAccept = canAccept
                     }
                 
                     table.insert(quests, questData)
@@ -35,113 +134,146 @@ if AIO.AddAddon() then
             until not result:NextRow()
         end
         
+        -- If no quests available, show appropriate message
         if #quests == 0 then
             quests = {
                 {
                     questId = 0,
                     title = "No Quests Available",
-                    description = "There are currently no quests available on the call board. Please check back later!",
+                    description = "There are currently no profession daily quests available for your level range.",
                     levelRequired = 1,
+                    professionType = "General",
                     image = "Interface\\Icons\\INV_Misc_QuestionMark",
-                    buttonText = "Check Later"
+                    buttonText = "Check Later",
+                    canAccept = false
                 }
             }
         end
         
-        return quests
+        return quests, totalTaken, DAILY_QUEST_LIMIT
     end
     
-    local function OnCommand(event, player, command)
-        if command == "acbtest" then
-            local quests = GetCallBoardQuests(player)
+    -- Right-click NPC interaction (replaces gossip menu)
+    local function OnCreatureInteract(event, player, creature)
+        if creature:GetEntry() == NPC_ENTRY_ID then
+            local quests, totalTaken, limit = GetProfessionDailyQuests(player)
             
-            local callBoardData = {
-                title = "Great adventures await! Please take a flyer.",
-                options = quests
+            local professionData = {
+                title = "Profession Daily Quests",
+                subtitle = string.format("Complete up to %d quests per day (%d/%d taken today)", limit, totalTaken, limit),
+                options = quests,
+                totalTaken = totalTaken,
+                limit = limit
             }
             
-            AIO.Msg():Add("HeroesCallBoard", "ShowCallBoard", callBoardData):Send(player)
-            return false
-        end
-        return true
-    end
-    
-    RegisterPlayerEvent(42, OnCommand)
-    
-    local function OnGossipHello(event, player, object)
-        player:GossipClearMenu()
-        player:GossipMenuAddItem(0, "|TInterface\\Icons\\INV_Misc_QuestionMark:20:20|t View Call Board", 0, 1)
-        player:GossipSendMenu(1, object, 1)
-    end
-    
-    local function OnGossipSelect(event, player, object, sender, intid, code, menu_id)
-        if intid == 1 then
-            local quests = GetCallBoardQuests(player)
-            
-            local callBoardData = {
-                title = "Great adventures await! Please take a flyer.",
-                options = quests
-            }
-            
-            AIO.Msg():Add("HeroesCallBoard", "ShowCallBoard", callBoardData):Send(player)
-            
-            player:GossipComplete()
+            AIO.Msg():Add("ProfessionDailyQuest", "ShowProfessionBoard", professionData):Send(player)
         end
     end
-
-    RegisterCreatureGossipEvent(60605, 1, OnGossipHello)
-    RegisterCreatureGossipEvent(60605, 2, OnGossipSelect)
-
-    RegisterCreatureGossipEvent(60705, 1, OnGossipHello)
-    RegisterCreatureGossipEvent(60705, 2, OnGossipSelect)
     
-    local function HandleCallBoardRequest(player, msgType, data)
+    RegisterPlayerEvent(36, OnCreatureInteract) -- PLAYER_EVENT_ON_INTERACT_WITH_CREATURE
+    
+    -- Handle quest acceptance
+    local function HandleProfessionQuestRequest(player, msgType, data)
         if not player or not player:IsInWorld() then
             return
         end
         
-        if msgType == "ButtonClick" then
-            local buttonId = data.buttonId
+        if msgType == "AcceptQuest" then
+            local questId = data.questId
             
-            local quests = GetCallBoardQuests(player)
-            local selectedQuest = quests[buttonId]
-            
-            if selectedQuest and selectedQuest.questId > 0 then
-                player:AddQuest(selectedQuest.questId)
-                AIO.Msg():Add("HeroesCallBoard", "CloseWindow", {}):Send(player)
+            if questId and questId > 0 then
+                -- Double-check if player can still take quests
+                if CanTakeMoreQuests(player) then
+                    local takenQuests, completedQuests, _ = GetPlayerDailyProgress(player)
+                    
+                    -- Check if quest is not already taken or completed today
+                    local alreadyTaken = false
+                    for _, takenId in ipairs(takenQuests) do
+                        if takenId == questId then
+                            alreadyTaken = true
+                            break
+                        end
+                    end
+                    
+                    for _, completedId in ipairs(completedQuests) do
+                        if completedId == questId then
+                            alreadyTaken = true
+                            break
+                        end
+                    end
+                    
+                    if not alreadyTaken and not player:HasQuest(questId) then
+                        player:AddQuest(questId)
+                        AddQuestProgress(player, questId, "taken")
+                        
+                        -- Send updated quest list
+                        local quests, totalTaken, limit = GetProfessionDailyQuests(player)
+                        local professionData = {
+                            title = "Profession Daily Quests",
+                            subtitle = string.format("Complete up to %d quests per day (%d/%d taken today)", limit, totalTaken, limit),
+                            options = quests,
+                            totalTaken = totalTaken,
+                            limit = limit
+                        }
+                        
+                        AIO.Msg():Add("ProfessionDailyQuest", "ShowProfessionBoard", professionData):Send(player)
+                        
+                        player:SendNotification("Quest accepted! You have taken " .. (totalTaken + 1) .. "/" .. limit .. " daily quests today.")
+                    end
+                end
+            end
+        elseif msgType == "CloseWindow" then
+            AIO.Msg():Add("ProfessionDailyQuest", "CloseWindow", {}):Send(player)
+        end
+    end
+    
+    -- Handle quest completion tracking
+    local function OnQuestComplete(event, player, questId)
+        local takenQuests, _, _ = GetPlayerDailyProgress(player)
+        
+        -- Check if this was a daily quest we're tracking
+        for _, takenId in ipairs(takenQuests) do
+            if takenId == questId then
+                AddQuestProgress(player, questId, "completed")
+                player:SendNotification("Daily quest completed! Check back tomorrow for new quests.")
+                break
             end
         end
     end
     
-    AIO.RegisterEvent("HeroesCallBoard", HandleCallBoardRequest)
+    RegisterPlayerEvent(8, OnQuestComplete) -- PLAYER_EVENT_ON_QUEST_COMPLETE
+    
+    AIO.RegisterEvent("ProfessionDailyQuest", HandleProfessionQuestRequest)
     return
 end
 
-local CallBoardAddon = {}
+-- Client-side addon
+local ProfessionDailyQuestAddon = {}
 local isWindowVisible = false
 
-    local function CreateCallBoardWindow()
-        local window = CreateFrame("Frame", "CallBoardWindow", UIParent)
-        window:SetSize(650, 550)
-        window:SetPoint("CENTER", UIParent, "CENTER")
-        window:SetMovable(false)
-        window:EnableMouse(true)
-        window:Hide()
-        
-        window:EnableKeyboard(true)
-        window:SetScript("OnKeyDown", function(self, key)
-            if key == "ESCAPE" then
-                CallBoardAddon:HideWindow()
-            end
-        end)
-        
-        window:SetBackdrop({
-            bgFile = "Interface\\AchievementFrame\\UI-Achievement-Parchment-Horizontal",
-            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-            insets = { left = 11, right = 12, top = 12, bottom = 11 }
-        })
-        window:SetAlpha(1.0)
-        
+local function CreateProfessionBoardWindow()
+    local window = CreateFrame("Frame", "ProfessionBoardWindow", UIParent)
+    window:SetSize(700, 500) -- Smaller window for better fit
+    window:SetPoint("CENTER", UIParent, "CENTER")
+    window:SetMovable(false)
+    window:EnableMouse(true)
+    window:Hide()
+    
+    window:EnableKeyboard(true)
+    window:SetScript("OnKeyDown", function(self, key)
+        if key == "ESCAPE" then
+            ProfessionDailyQuestAddon:HideWindow()
+        end
+    end)
+    
+    window:SetBackdrop({
+        bgFile = "Interface\\AchievementFrame\\UI-Achievement-Parchment-Horizontal",
+        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+        insets = { left = 11, right = 12, top = 12, bottom = 11 }
+    })
+    window:SetAlpha(1.0)
+    
+    -- Close button
     local closeButton = CreateFrame("Button", nil, window)
     closeButton:SetSize(28, 28)
     closeButton:SetPoint("TOPRIGHT", window, "TOPRIGHT", -10, -10)
@@ -151,32 +283,51 @@ local isWindowVisible = false
     closeButton:SetHighlightTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Highlight", "ADD")
     
     closeButton:SetScript("OnClick", function()
-        CallBoardAddon:HideWindow()
-    end)
-    
-    closeButton:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText("Close")
-        GameTooltip:Show()
-    end)
-    closeButton:SetScript("OnLeave", function()
-        GameTooltip:Hide()
+        ProfessionDailyQuestAddon:HideWindow()
     end)
     
     window.title = window:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     window.title:SetPoint("TOP", window, "TOP", 0, -25)
-    window.title:SetText("ADVENTURER'S QUEST BOARD")
+    window.title:SetText("PROFESSION DAILY QUESTS")
     window.title:SetTextColor(0.9, 0.8, 0.5, 1)
     
     window.subtitle = window:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     window.subtitle:SetPoint("TOP", window.title, "BOTTOM", 0, -5)
-    window.subtitle:SetText("Great adventures await! Please take a flyer.")
+    window.subtitle:SetText("Complete up to 2 quests per day")
     window.subtitle:SetTextColor(0.7, 0.7, 0.7, 0.8)
     window.titleText = window.subtitle
     
+    -- Progress bar
+    local progressFrame = CreateFrame("Frame", nil, window)
+    progressFrame:SetSize(300, 20)
+    progressFrame:SetPoint("TOP", window.subtitle, "BOTTOM", 0, -15)
+    progressFrame:SetBackdrop({
+        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true, tileSize = 32, edgeSize = 6,
+        insets = { left = 3, right = 3, top = 3, bottom = 3 }
+    })
+    progressFrame:SetBackdropColor(0.1, 0.1, 0.15, 0.95)
+    
+    local progressBar = CreateFrame("StatusBar", nil, progressFrame)
+    progressBar:SetSize(290, 14)
+    progressBar:SetPoint("CENTER", progressFrame, "CENTER")
+    progressBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+    progressBar:SetStatusBarColor(0.2, 0.8, 0.2, 1)
+    progressBar:SetMinMaxValues(0, 2)
+    progressBar:SetValue(0)
+    
+    local progressText = progressFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    progressText:SetPoint("CENTER", progressFrame, "CENTER")
+    progressText:SetText("0/2 Quests Taken")
+    progressText:SetTextColor(0.9, 0.9, 0.9, 1)
+    window.progressText = progressText
+    window.progressBar = progressBar
+    
+    -- Scrollable content frame
     local contentFrame = CreateFrame("Frame", nil, window)
-    contentFrame:SetSize(580, 440)
-    contentFrame:SetPoint("TOP", window, "TOP", 0, -70)
+    contentFrame:SetSize(660, 350) -- Reduced height for more compact design
+    contentFrame:SetPoint("TOP", progressFrame, "BOTTOM", 0, -15)
     contentFrame:SetBackdrop({
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -186,39 +337,29 @@ local isWindowVisible = false
     contentFrame:SetBackdropColor(0.06, 0.06, 0.1, 0.95)
     contentFrame:SetBackdropBorderColor(0.5, 0.5, 0.6, 0.8)
     
-    local contentTitle = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    contentTitle:SetPoint("TOP", contentFrame, "TOP", 0, -15)
-    contentTitle:SetText("Available Quests")
-    contentTitle:SetTextColor(0.9, 0.8, 0.5, 1)
-    contentTitle:SetDrawLayer("OVERLAY", 1)
-    contentTitle:Hide()
-    window.contentTitle = contentTitle
+    -- Create scroll frame
+    local scrollFrame = CreateFrame("ScrollFrame", nil, contentFrame, "UIPanelScrollFrameTemplate")
+    scrollFrame:SetSize(620, 310)
+    scrollFrame:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", 10, -10)
+    scrollFrame:SetPoint("BOTTOMRIGHT", contentFrame, "BOTTOMRIGHT", -30, 10)
     
-    local noQuestsMessage = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    noQuestsMessage:SetPoint("CENTER", contentFrame, "CENTER", 0, 0)
-    noQuestsMessage:SetText("No Quests Available")
-    noQuestsMessage:SetTextColor(0.9, 0.8, 0.5, 1)
-    noQuestsMessage:SetJustifyH("CENTER")
-    window.noQuestsMessage = noQuestsMessage
+    local scrollChild = CreateFrame("Frame", nil, scrollFrame)
+    scrollChild:SetSize(600, 300)
+    scrollFrame:SetScrollChild(scrollChild)
     
-    local noQuestsDescription = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    noQuestsDescription:SetPoint("TOP", noQuestsMessage, "BOTTOM", 0, -10)
-    noQuestsDescription:SetText("There are currently no quests available on the call board.\nPlease check back later!")
-    noQuestsDescription:SetTextColor(0.7, 0.7, 0.7, 0.8)
-    noQuestsDescription:SetJustifyH("CENTER")
-    window.noQuestsDescription = noQuestsDescription
+    window.scrollChild = scrollChild
+    window.scrollFrame = scrollFrame
     
+    -- Create compact quest frames (more can fit now)
     window.optionFrames = {}
-    for i = 1, 3 do
-        local optionFrame = CreateFrame("Frame", nil, contentFrame)
-        optionFrame:SetSize(540, 110)
+    for i = 1, 20 do -- Increased from 3 to 20
+        local optionFrame = CreateFrame("Frame", nil, scrollChild)
+        optionFrame:SetSize(580, 70) -- Reduced height from 110 to 70 for more compact design
         
         if i == 1 then
-            optionFrame:SetPoint("TOP", contentFrame, "TOP", 0, -50)
-        elseif i == 2 then
-            optionFrame:SetPoint("TOP", window.optionFrames[1], "BOTTOM", 0, -15)
-        elseif i == 3 then
-            optionFrame:SetPoint("TOP", window.optionFrames[2], "BOTTOM", 0, -15)
+            optionFrame:SetPoint("TOP", scrollChild, "TOP", 0, -10)
+        else
+            optionFrame:SetPoint("TOP", window.optionFrames[i-1], "BOTTOM", 0, -5)
         end
         
         optionFrame:SetBackdrop({
@@ -246,39 +387,46 @@ local isWindowVisible = false
             self:SetBackdropBorderColor(0.4, 0.4, 0.5, 0.8)
         end)
         
-        local title = optionFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-        title:SetPoint("TOPLEFT", optionFrame, "TOPLEFT", 15, -8)
+        -- Compact title and profession type
+        local title = optionFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        title:SetPoint("TOPLEFT", optionFrame, "TOPLEFT", 60, -8)
         title:SetTextColor(0.9, 0.8, 0.5, 1)
         optionFrame.title = title
+        
+        local professionType = optionFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        professionType:SetPoint("TOPRIGHT", optionFrame, "TOPRIGHT", -80, -8)
+        professionType:SetTextColor(0.7, 0.7, 0.7, 0.8)
+        optionFrame.professionType = professionType
         
         local levelText = optionFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         levelText:SetPoint("TOPRIGHT", optionFrame, "TOPRIGHT", -15, -8)
         levelText:SetTextColor(0.7, 0.7, 0.7, 0.8)
         optionFrame.levelText = levelText
         
+        -- Smaller icon
         local image = optionFrame:CreateTexture(nil, "ARTWORK")
-        image:SetSize(48, 48)
-        image:SetPoint("TOPLEFT", optionFrame, "TOPLEFT", 15, -35)
+        image:SetSize(32, 32) -- Reduced from 48x48 to 32x32
+        image:SetPoint("TOPLEFT", optionFrame, "TOPLEFT", 15, -19)
         optionFrame.image = image
         
-        local imageGlow = optionFrame:CreateTexture(nil, "BACKGROUND")
-        imageGlow:SetSize(54, 54)
-        imageGlow:SetPoint("CENTER", image, "CENTER")
-        imageGlow:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
-        imageGlow:SetBlendMode("ADD")
-        imageGlow:SetVertexColor(0.9, 0.8, 0.5, 0.5)
-        imageGlow:SetAlpha(0.25)
-        
+        -- Compact description (shorter)
         local description = optionFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        description:SetPoint("TOPLEFT", image, "TOPRIGHT", 15, 0)
-        description:SetPoint("BOTTOMRIGHT", optionFrame, "BOTTOMRIGHT", -15, 35)
+        description:SetPoint("TOPLEFT", image, "TOPRIGHT", 10, 0)
+        description:SetPoint("BOTTOMRIGHT", optionFrame, "BOTTOMRIGHT", -80, 25)
         description:SetJustifyH("LEFT")
         description:SetJustifyV("TOP")
         description:SetTextColor(0.8, 0.8, 0.8, 1)
         optionFrame.description = description
         
+        -- Reward info
+        local rewardText = optionFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        rewardText:SetPoint("BOTTOMLEFT", optionFrame, "BOTTOMLEFT", 60, 8)
+        rewardText:SetTextColor(0.7, 0.9, 0.7, 1)
+        optionFrame.rewardText = rewardText
+        
+        -- Compact button
         local button = CreateFrame("Button", nil, optionFrame)
-        button:SetSize(140, 28)
+        button:SetSize(100, 24) -- Smaller button
         button:SetPoint("BOTTOMRIGHT", optionFrame, "BOTTOMRIGHT", -15, 8)
         
         button:SetBackdrop({
@@ -290,15 +438,17 @@ local isWindowVisible = false
         button:SetBackdropColor(0.15, 0.15, 0.2, 0.95)
         button:SetBackdropBorderColor(0.5, 0.5, 0.6, 1)
         
-        button.text = button:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        button.text = button:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         button.text:SetPoint("CENTER", button, "CENTER", 0, 0)
         button.text:SetText("Action")
         button.text:SetTextColor(0.9, 0.9, 0.9, 1)
         
         button:SetScript("OnEnter", function(self)
-            self:SetBackdropColor(0.2, 0.2, 0.25, 0.95)
-            self:SetBackdropBorderColor(0.7, 0.7, 0.8, 1)
-            self.text:SetTextColor(1, 1, 1, 1)
+            if self.canAccept then
+                self:SetBackdropColor(0.2, 0.2, 0.25, 0.95)
+                self:SetBackdropBorderColor(0.7, 0.7, 0.8, 1)
+                self.text:SetTextColor(1, 1, 1, 1)
+            end
         end)
         
         button:SetScript("OnLeave", function(self)
@@ -307,49 +457,40 @@ local isWindowVisible = false
             self.text:SetTextColor(0.9, 0.9, 0.9, 1)
         end)
         
-        button:SetScript("OnMouseDown", function(self)
-            self:SetBackdropColor(0.1, 0.1, 0.15, 0.95)
-            self.text:SetTextColor(0.8, 0.8, 0.8, 1)
-        end)
-        
-        button:SetScript("OnMouseUp", function(self)
-            self:SetBackdropColor(0.2, 0.2, 0.25, 0.95)
-            self.text:SetTextColor(1, 1, 1, 1)
+        button:SetScript("OnClick", function(self)
+            if self.canAccept and self.questId > 0 then
+                AIO.Msg():Add("ProfessionDailyQuest", "AcceptQuest", {questId = self.questId}):Send()
+            end
         end)
         
         button.optionId = i
-        button:SetScript("OnClick", function(self)
-            AIO.Msg():Add("HeroesCallBoard", "ButtonClick", {buttonId = self.optionId}):Send()
-        end)
         optionFrame.button = button
         
         optionFrame:Hide()
         window.optionFrames[i] = optionFrame
     end
     
-    AIO.SavePosition(window)
-    
     return window
 end
 
-function CallBoardAddon:Initialize()
-    self.window = CreateCallBoardWindow()
+function ProfessionDailyQuestAddon:Initialize()
+    self.window = CreateProfessionBoardWindow()
 end
 
-function CallBoardAddon:ShowWindow(callBoardData)
+function ProfessionDailyQuestAddon:ShowWindow(professionData)
     if self.window then
         self.window:Show()
         isWindowVisible = true
         
-        if callBoardData then
-            self:UpdateCallBoardData(callBoardData)
+        if professionData then
+            self:UpdateProfessionData(professionData)
         end
         
         PlaySound("igMainMenuOpen")
     end
 end
 
-function CallBoardAddon:HideWindow()
+function ProfessionDailyQuestAddon:HideWindow()
     if self.window then
         self.window:Hide()
         isWindowVisible = false
@@ -358,10 +499,19 @@ function CallBoardAddon:HideWindow()
     end
 end
 
-function CallBoardAddon:UpdateCallBoardData(data)
+function ProfessionDailyQuestAddon:UpdateProfessionData(data)
     if self.window and data then
+        -- Update title and subtitle
         if self.window.titleText then
-            self.window.titleText:SetText(data.title or "Great adventures await! Please take a flyer.")
+            self.window.titleText:SetText(data.subtitle or "Complete up to 2 quests per day")
+        end
+        
+        -- Update progress bar
+        if self.window.progressBar and self.window.progressText then
+            local totalTaken = data.totalTaken or 0
+            local limit = data.limit or 2
+            self.window.progressBar:SetValue(totalTaken)
+            self.window.progressText:SetText(totalTaken .. "/" .. limit .. " Quests Taken")
         end
         
         local hasRealQuests = false
@@ -375,9 +525,7 @@ function CallBoardAddon:UpdateCallBoardData(data)
         end
         
         if hasRealQuests then
-            if self.window.contentTitle then
-                self.window.contentTitle:Show()
-            end
+            -- Hide no quests message
             if self.window.noQuestsMessage then
                 self.window.noQuestsMessage:Hide()
             end
@@ -385,22 +533,43 @@ function CallBoardAddon:UpdateCallBoardData(data)
                 self.window.noQuestsDescription:Hide()
             end
             
+            -- Update quest frames
             if self.window.optionFrames and data.options then
                 for i, option in ipairs(data.options) do
                     local optionFrame = self.window.optionFrames[i]
                     if optionFrame then
                         optionFrame.title:SetText(option.title)
+                        optionFrame.professionType:SetText("[" .. option.professionType .. "]")
                         optionFrame.image:SetTexture(option.image)
-                        optionFrame.description:SetText(option.description)
-                        optionFrame.button.text:SetText(option.buttonText)
                         
-                        if option.backgroundImage and option.backgroundImage ~= "" then
-                            optionFrame.backgroundImage:SetTexture(option.backgroundImage)
-                            optionFrame.backgroundImage:Show()
+                        -- Truncate description for compact display
+                        local desc = option.description
+                        if string.len(desc) > 80 then
+                            desc = string.sub(desc, 1, 77) .. "..."
+                        end
+                        optionFrame.description:SetText(desc)
+                        
+                        -- Set button text and state
+                        optionFrame.button.text:SetText(option.buttonText)
+                        optionFrame.button.questId = option.questId
+                        optionFrame.button.canAccept = option.canAccept
+                        
+                        -- Update button appearance based on status
+                        if option.status == "completed" then
+                            optionFrame.button:SetBackdropColor(0.1, 0.4, 0.1, 0.95)
+                            optionFrame.button.text:SetTextColor(0.7, 0.9, 0.7, 1)
+                        elseif option.status == "taken" then
+                            optionFrame.button:SetBackdropColor(0.4, 0.4, 0.1, 0.95)
+                            optionFrame.button.text:SetTextColor(0.9, 0.9, 0.7, 1)
+                        elseif option.status == "limit_reached" then
+                            optionFrame.button:SetBackdropColor(0.4, 0.1, 0.1, 0.95)
+                            optionFrame.button.text:SetTextColor(0.9, 0.7, 0.7, 1)
                         else
-                            optionFrame.backgroundImage:Hide()
+                            optionFrame.button:SetBackdropColor(0.15, 0.15, 0.2, 0.95)
+                            optionFrame.button.text:SetTextColor(0.9, 0.9, 0.9, 1)
                         end
                         
+                        -- Level requirement
                         if option.levelRequired then
                             if option.levelMax and option.levelMax > option.levelRequired then
                                 optionFrame.levelText:SetText("Level " .. option.levelRequired .. "-" .. option.levelMax)
@@ -411,10 +580,32 @@ function CallBoardAddon:UpdateCallBoardData(data)
                             optionFrame.levelText:SetText("")
                         end
                         
+                        -- Reward info
+                        local rewardInfo = ""
+                        if option.rewardGold > 0 then
+                            rewardInfo = rewardInfo .. option.rewardGold .. " Gold"
+                        end
+                        if option.rewardXp > 0 then
+                            if rewardInfo ~= "" then
+                                rewardInfo = rewardInfo .. ", "
+                            end
+                            rewardInfo = rewardInfo .. option.rewardXp .. " XP"
+                        end
+                        optionFrame.rewardText:SetText(rewardInfo)
+                        
+                        -- Background image
+                        if option.backgroundImage and option.backgroundImage ~= "" then
+                            optionFrame.backgroundImage:SetTexture(option.backgroundImage)
+                            optionFrame.backgroundImage:Show()
+                        else
+                            optionFrame.backgroundImage:Hide()
+                        end
+                        
                         optionFrame:Show()
                     end
                 end
                 
+                -- Hide unused frames
                 for i = #data.options + 1, #self.window.optionFrames do
                     if self.window.optionFrames[i] then
                         self.window.optionFrames[i]:Hide()
@@ -422,9 +613,7 @@ function CallBoardAddon:UpdateCallBoardData(data)
                 end
             end
         else
-            if self.window.contentTitle then
-                self.window.contentTitle:Hide()
-            end
+            -- Show no quests message
             if self.window.noQuestsMessage then
                 self.window.noQuestsMessage:Show()
             end
@@ -432,16 +621,22 @@ function CallBoardAddon:UpdateCallBoardData(data)
                 self.window.noQuestsDescription:Show()
             end
             
+            -- Hide all quest frames
             if self.window.optionFrames then
                 for _, optionFrame in ipairs(self.window.optionFrames) do
                     optionFrame:Hide()
                 end
             end
         end
+        
+        -- Update scroll child height based on number of visible quests
+        local visibleQuests = math.min(#data.options or 0, 20)
+        local newHeight = math.max(visibleQuests * 75, 100) -- 75 pixels per quest (70 height + 5 margin)
+        self.window.scrollChild:SetHeight(newHeight)
     end
 end
 
-function CallBoardAddon:ToggleWindow()
+function ProfessionDailyQuestAddon:ToggleWindow()
     if isWindowVisible then
         self:HideWindow()
     else
@@ -449,18 +644,14 @@ function CallBoardAddon:ToggleWindow()
     end
 end
 
-local function HandleCallBoardMessage(player, msgType, data)
-    if msgType == "ShowCallBoard" then
-        CallBoardAddon:ShowWindow(data)
-    elseif msgType == "PlaySound" then
-        if data and data.soundId then
-            PlaySound(data.soundId)
-        end
+local function HandleProfessionQuestMessage(player, msgType, data)
+    if msgType == "ShowProfessionBoard" then
+        ProfessionDailyQuestAddon:ShowWindow(data)
     elseif msgType == "CloseWindow" then
-        CallBoardAddon:HideWindow()
+        ProfessionDailyQuestAddon:HideWindow()
     end
 end
 
-AIO.RegisterEvent("HeroesCallBoard", HandleCallBoardMessage)
+AIO.RegisterEvent("ProfessionDailyQuest", HandleProfessionQuestMessage)
 
-CallBoardAddon:Initialize() 
+ProfessionDailyQuestAddon:Initialize()
