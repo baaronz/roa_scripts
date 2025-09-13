@@ -154,13 +154,14 @@ if AIO.AddAddon() then
     end
     
     -- Gossip menu system
-    local function OnGossipHello(event, player, object)
+    local function OnHello(event, player, object)
         player:GossipClearMenu()
-        player:GossipMenuAddItem(0, "|TInterface\\Icons\\Trade_Engineering:20:20|t View Profession Daily Quests", 0, 1)
+        player:GossipMenuAddItem(2, "|TInterface\\Icons\\Trade_Engineering:20:20|t View Profession Daily Quests", 0, 1)
+        player:GossipMenuAddItem(0, "Goodbye.", 0, 99)
         player:GossipSendMenu(1, object, 1)
     end
     
-    local function OnGossipSelect(event, player, object, sender, intid, code, menu_id)
+    local function OnSelect(event, player, object, sender, intid, code, menu_id)
         if intid == 1 then
             local quests, totalTaken, limit = GetProfessionDailyQuests(player)
             
@@ -174,12 +175,15 @@ if AIO.AddAddon() then
             
             AIO.Msg():Add("ProfessionDailyQuest", "ShowProfessionBoard", professionData):Send(player)
             
-            player:GossipComplete()
+        elseif intid == 99 then
+            player:SendBroadcastMessage("|cFF00FF00Farewell, adventurer!|r")
         end
+        
+        player:GossipComplete()
     end
 
-    RegisterCreatureGossipEvent(NPC_ENTRY_ID, 1, OnGossipHello)
-    RegisterCreatureGossipEvent(NPC_ENTRY_ID, 2, OnGossipSelect)
+    RegisterCreatureGossipEvent(NPC_ENTRY_ID, 1, OnHello)
+    RegisterCreatureGossipEvent(NPC_ENTRY_ID, 2, OnSelect)
     
     -- Handle quest acceptance
     local function HandleProfessionQuestRequest(player, msgType, data)
@@ -227,7 +231,7 @@ if AIO.AddAddon() then
                         
                         AIO.Msg():Add("ProfessionDailyQuest", "ShowProfessionBoard", professionData):Send(player)
                         
-                        player:SendNotification("Quest accepted! You have taken " .. (totalTaken + 1) .. "/" .. limit .. " daily quests today.")
+                        player:SendBroadcastMessage("|cFF00FF00Quest accepted! You have taken " .. (totalTaken + 1) .. "/" .. limit .. " daily quests today.|r")
                     end
                 end
             end
@@ -242,11 +246,11 @@ if AIO.AddAddon() then
         
         -- Check if this was a daily quest we're tracking
         for _, takenId in ipairs(takenQuests) do
-            if takenId == questId then
-                AddQuestProgress(player, questId, "completed")
-                player:SendNotification("Daily quest completed! Check back tomorrow for new quests.")
-                break
-            end
+        if takenId == questId then
+            AddQuestProgress(player, questId, "completed")
+            player:SendBroadcastMessage("|cFF00FF00Daily quest completed! Check back tomorrow for new quests.|r")
+            break
+        end
         end
     end
     
