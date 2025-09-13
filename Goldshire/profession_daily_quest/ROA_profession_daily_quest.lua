@@ -5,11 +5,36 @@ if not AIO.IsMainState() then
 end
 
 if AIO.AddAddon() then
-    print("HeroesCallBoard: Server side script loaded!")
+    print("ProfessionDailyQuest: Server side script loaded!")
     
     local function GetCallBoardQuests(player)
         local quests = {}
-        local result = WorldDBQuery("SELECT quest_id, quest_name, description, level_required, level_max, icon, background_image FROM heroes_call_board_quests WHERE active = 1 ORDER BY sort_order ASC, quest_name ASC")
+        local playerGuid = player:GetGUIDLow()
+        local today = os.time()
+        local todayStart = today - (today % 86400) -- Start of today in Unix time
+        
+        -- First, check how many daily quests the player has completed today
+        local dailyCountResult = CharDBQuery("SELECT COUNT(*) FROM character_queststatus_daily WHERE guid = " .. playerGuid .. " AND time >= " .. todayStart)
+        local dailyQuestsCompleted = 0
+        if dailyCountResult then
+            dailyQuestsCompleted = dailyCountResult:GetUInt32(0)
+        end
+        
+        -- If player has already completed 2 daily quests, show message
+        if dailyQuestsCompleted >= 2 then
+            return {
+                {
+                    questId = 0,
+                    title = "Daily Quests Completed",
+                    description = "You have already completed your maximum of 2 daily profession quests today. Please return tomorrow for new opportunities!",
+                    levelRequired = 1,
+                    image = "Interface\\Icons\\INV_Misc_QuestionMark",
+                    buttonText = "Check Tomorrow"
+                }
+            }
+        end
+        
+        local result = WorldDBQuery("SELECT quest_id, quest_name, description, level_required, level_max, icon, background_image FROM roa_profession_daily_quests WHERE active = 1 ORDER BY sort_order ASC, quest_name ASC")
         
         if result then
             repeat
@@ -18,7 +43,14 @@ if AIO.AddAddon() then
                 local levelMax = result:GetUInt32(4)
                 local playerLevel = player:GetLevel()
                 
-                if not player:HasQuest(questId) and playerLevel >= levelRequired and playerLevel <= levelMax then
+                -- Check if player has already completed this daily quest today
+                local questCompletedResult = CharDBQuery("SELECT quest FROM character_queststatus_daily WHERE guid = " .. playerGuid .. " AND quest = " .. questId .. " AND time >= " .. todayStart)
+                local hasCompletedToday = questCompletedResult ~= nil
+                
+                -- Check if player already has this quest
+                local hasQuest = player:HasQuest(questId)
+                
+                if not hasQuest and not hasCompletedToday and playerLevel >= levelRequired and playerLevel <= levelMax then
                     local questData = {
                         questId = questId,
                         title = result:GetString(1),
@@ -56,7 +88,7 @@ if AIO.AddAddon() then
             local quests = GetCallBoardQuests(player)
             
             local callBoardData = {
-                title = "Great adventures await! Please take a flyer.",
+                title = "Daily Profession Quests Available",
                 options = quests
             }
             
@@ -79,7 +111,7 @@ if AIO.AddAddon() then
             local quests = GetCallBoardQuests(player)
             
             local callBoardData = {
-                title = "Great adventures await! Please take a flyer.",
+                title = "Daily Profession Quests Available",
                 options = quests
             }
             
@@ -122,7 +154,7 @@ local isWindowVisible = false
 
     local function CreateCallBoardWindow()
         local window = CreateFrame("Frame", "CallBoardWindow", UIParent)
-        window:SetSize(650, 550)
+        window:SetSize(700, 600)
         window:SetPoint("CENTER", UIParent, "CENTER")
         window:SetMovable(false)
         window:EnableMouse(true)
@@ -164,19 +196,19 @@ local isWindowVisible = false
     end)
     
     window.title = window:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    window.title:SetPoint("TOP", window, "TOP", 0, -25)
-    window.title:SetText("ADVENTURER'S QUEST BOARD")
+    window.title:SetPoint("TOP", window, "TOP", 0, -20)
+    window.title:SetText("DAILY PROFESSION QUESTS")
     window.title:SetTextColor(0.9, 0.8, 0.5, 1)
     
     window.subtitle = window:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    window.subtitle:SetPoint("TOP", window.title, "BOTTOM", 0, -5)
-    window.subtitle:SetText("Great adventures await! Please take a flyer.")
+    window.subtitle:SetPoint("TOP", window.title, "BOTTOM", 0, -3)
+    window.subtitle:SetText("Choose up to 2 daily profession quests")
     window.subtitle:SetTextColor(0.7, 0.7, 0.7, 0.8)
     window.titleText = window.subtitle
     
     local contentFrame = CreateFrame("Frame", nil, window)
-    contentFrame:SetSize(580, 440)
-    contentFrame:SetPoint("TOP", window, "TOP", 0, -70)
+    contentFrame:SetSize(650, 500)
+    contentFrame:SetPoint("TOP", window, "TOP", 0, -50)
     contentFrame:SetBackdrop({
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -208,18 +240,26 @@ local isWindowVisible = false
     noQuestsDescription:SetJustifyH("CENTER")
     window.noQuestsDescription = noQuestsDescription
     
+    -- Create quest container frame
+    local questContainer = CreateFrame("Frame", nil, contentFrame)
+    questContainer:SetSize(620, 450)
+    questContainer:SetPoint("TOP", contentFrame, "TOP", 0, -30)
+    
+    window.questContainer = questContainer
     window.optionFrames = {}
-    for i = 1, 3 do
-        local optionFrame = CreateFrame("Frame", nil, contentFrame)
-        optionFrame:SetSize(540, 110)
+    
+    -- Function to create quest frame
+    local function CreateQuestFrame(parent, index)
+        local optionFrame = CreateFrame("Frame", nil, parent)
+        optionFrame:SetSize(300, 45)
         
-        if i == 1 then
-            optionFrame:SetPoint("TOP", contentFrame, "TOP", 0, -50)
-        elseif i == 2 then
-            optionFrame:SetPoint("TOP", window.optionFrames[1], "BOTTOM", 0, -15)
-        elseif i == 3 then
-            optionFrame:SetPoint("TOP", window.optionFrames[2], "BOTTOM", 0, -15)
-        end
+        -- Calculate position in 2-column grid
+        local col = (index - 1) % 2
+        local row = math.floor((index - 1) / 2)
+        local xOffset = col * 310 -- 300 width + 10 spacing
+        local yOffset = -row * 50 -- 45 height + 5 spacing
+        
+        optionFrame:SetPoint("TOPLEFT", parent, "TOPLEFT", xOffset, yOffset)
         
         optionFrame:SetBackdrop({
             bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -246,40 +286,32 @@ local isWindowVisible = false
             self:SetBackdropBorderColor(0.4, 0.4, 0.5, 0.8)
         end)
         
-        local title = optionFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-        title:SetPoint("TOPLEFT", optionFrame, "TOPLEFT", 15, -8)
+        local title = optionFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        title:SetPoint("TOPLEFT", optionFrame, "TOPLEFT", 8, -3)
         title:SetTextColor(0.9, 0.8, 0.5, 1)
         optionFrame.title = title
         
         local levelText = optionFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        levelText:SetPoint("TOPRIGHT", optionFrame, "TOPRIGHT", -15, -8)
+        levelText:SetPoint("TOPRIGHT", optionFrame, "TOPRIGHT", -8, -3)
         levelText:SetTextColor(0.7, 0.7, 0.7, 0.8)
         optionFrame.levelText = levelText
         
         local image = optionFrame:CreateTexture(nil, "ARTWORK")
-        image:SetSize(48, 48)
-        image:SetPoint("TOPLEFT", optionFrame, "TOPLEFT", 15, -35)
+        image:SetSize(24, 24)
+        image:SetPoint("TOPLEFT", optionFrame, "TOPLEFT", 8, -18)
         optionFrame.image = image
         
-        local imageGlow = optionFrame:CreateTexture(nil, "BACKGROUND")
-        imageGlow:SetSize(54, 54)
-        imageGlow:SetPoint("CENTER", image, "CENTER")
-        imageGlow:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
-        imageGlow:SetBlendMode("ADD")
-        imageGlow:SetVertexColor(0.9, 0.8, 0.5, 0.5)
-        imageGlow:SetAlpha(0.25)
-        
         local description = optionFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        description:SetPoint("TOPLEFT", image, "TOPRIGHT", 15, 0)
-        description:SetPoint("BOTTOMRIGHT", optionFrame, "BOTTOMRIGHT", -15, 35)
+        description:SetPoint("TOPLEFT", image, "TOPRIGHT", 6, 0)
+        description:SetPoint("BOTTOMRIGHT", optionFrame, "BOTTOMRIGHT", -70, 6)
         description:SetJustifyH("LEFT")
         description:SetJustifyV("TOP")
         description:SetTextColor(0.8, 0.8, 0.8, 1)
         optionFrame.description = description
         
         local button = CreateFrame("Button", nil, optionFrame)
-        button:SetSize(140, 28)
-        button:SetPoint("BOTTOMRIGHT", optionFrame, "BOTTOMRIGHT", -15, 8)
+        button:SetSize(60, 20)
+        button:SetPoint("BOTTOMRIGHT", optionFrame, "BOTTOMRIGHT", -8, 6)
         
         button:SetBackdrop({
             bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -290,9 +322,9 @@ local isWindowVisible = false
         button:SetBackdropColor(0.15, 0.15, 0.2, 0.95)
         button:SetBackdropBorderColor(0.5, 0.5, 0.6, 1)
         
-        button.text = button:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        button.text = button:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         button.text:SetPoint("CENTER", button, "CENTER", 0, 0)
-        button.text:SetText("Action")
+        button.text:SetText("Accept")
         button.text:SetTextColor(0.9, 0.9, 0.9, 1)
         
         button:SetScript("OnEnter", function(self)
@@ -317,15 +349,17 @@ local isWindowVisible = false
             self.text:SetTextColor(1, 1, 1, 1)
         end)
         
-        button.optionId = i
+        button.optionId = index
         button:SetScript("OnClick", function(self)
             AIO.Msg():Add("HeroesCallBoard", "ButtonClick", {buttonId = self.optionId}):Send()
         end)
         optionFrame.button = button
         
         optionFrame:Hide()
-        window.optionFrames[i] = optionFrame
+        return optionFrame
     end
+    
+    window.CreateQuestFrame = CreateQuestFrame
     
     AIO.SavePosition(window)
     
@@ -361,7 +395,7 @@ end
 function CallBoardAddon:UpdateCallBoardData(data)
     if self.window and data then
         if self.window.titleText then
-            self.window.titleText:SetText(data.title or "Great adventures await! Please take a flyer.")
+            self.window.titleText:SetText(data.title or "Choose up to 2 daily profession quests")
         end
         
         local hasRealQuests = false
@@ -371,6 +405,13 @@ function CallBoardAddon:UpdateCallBoardData(data)
                     hasRealQuests = true
                     break
                 end
+            end
+        end
+        
+        -- Hide all existing quest frames
+        if self.window.optionFrames then
+            for _, frame in ipairs(self.window.optionFrames) do
+                frame:Hide()
             end
         end
         
@@ -384,41 +425,41 @@ function CallBoardAddon:UpdateCallBoardData(data)
             if self.window.noQuestsDescription then
                 self.window.noQuestsDescription:Hide()
             end
+            if self.window.questContainer then
+                self.window.questContainer:Show()
+            end
             
-            if self.window.optionFrames and data.options then
+            -- Clear existing frames
+            self.window.optionFrames = {}
+            
+            -- Create new quest frames
+            if data.options then
                 for i, option in ipairs(data.options) do
-                    local optionFrame = self.window.optionFrames[i]
-                    if optionFrame then
-                        optionFrame.title:SetText(option.title)
-                        optionFrame.image:SetTexture(option.image)
-                        optionFrame.description:SetText(option.description)
-                        optionFrame.button.text:SetText(option.buttonText)
-                        
-                        if option.backgroundImage and option.backgroundImage ~= "" then
-                            optionFrame.backgroundImage:SetTexture(option.backgroundImage)
-                            optionFrame.backgroundImage:Show()
-                        else
-                            optionFrame.backgroundImage:Hide()
-                        end
-                        
-                        if option.levelRequired then
-                            if option.levelMax and option.levelMax > option.levelRequired then
-                                optionFrame.levelText:SetText("Level " .. option.levelRequired .. "-" .. option.levelMax)
-                            else
-                                optionFrame.levelText:SetText("Level " .. option.levelRequired)
-                            end
-                        else
-                            optionFrame.levelText:SetText("")
-                        end
-                        
-                        optionFrame:Show()
+                    local optionFrame = self.window.CreateQuestFrame(self.window.questContainer, i)
+                    optionFrame.title:SetText(option.title)
+                    optionFrame.image:SetTexture(option.image)
+                    optionFrame.description:SetText(option.description)
+                    optionFrame.button.text:SetText(option.buttonText)
+                    
+                    if option.backgroundImage and option.backgroundImage ~= "" then
+                        optionFrame.backgroundImage:SetTexture(option.backgroundImage)
+                        optionFrame.backgroundImage:Show()
+                    else
+                        optionFrame.backgroundImage:Hide()
                     end
-                end
-                
-                for i = #data.options + 1, #self.window.optionFrames do
-                    if self.window.optionFrames[i] then
-                        self.window.optionFrames[i]:Hide()
+                    
+                    if option.levelRequired then
+                        if option.levelMax and option.levelMax > option.levelRequired then
+                            optionFrame.levelText:SetText("Level " .. option.levelRequired .. "-" .. option.levelMax)
+                        else
+                            optionFrame.levelText:SetText("Level " .. option.levelRequired)
+                        end
+                    else
+                        optionFrame.levelText:SetText("")
                     end
+                    
+                    optionFrame:Show()
+                    table.insert(self.window.optionFrames, optionFrame)
                 end
             end
         else
@@ -431,11 +472,8 @@ function CallBoardAddon:UpdateCallBoardData(data)
             if self.window.noQuestsDescription then
                 self.window.noQuestsDescription:Show()
             end
-            
-            if self.window.optionFrames then
-                for _, optionFrame in ipairs(self.window.optionFrames) do
-                    optionFrame:Hide()
-                end
+            if self.window.questContainer then
+                self.window.questContainer:Hide()
             end
         end
     end
