@@ -1,3 +1,10 @@
+-- Define warn function if it doesn't exist (fixes optlex.lua error)
+if not warn then
+    warn = function(...)
+        print("WARNING:", ...)
+    end
+end
+
 local AIO = AIO or require("AIO")
 
 if not AIO.IsMainState() then
@@ -246,11 +253,11 @@ if AIO.AddAddon() then
         
         -- Check if this was a daily quest we're tracking
         for _, takenId in ipairs(takenQuests) do
-        if takenId == questId then
-            AddQuestProgress(player, questId, "completed")
-            player:SendBroadcastMessage("|cFF00FF00Daily quest completed! Check back tomorrow for new quests.|r")
-            break
-        end
+            if takenId == questId then
+                AddQuestProgress(player, questId, "completed")
+                player:SendBroadcastMessage("|cFF00FF00Daily quest completed! Check back tomorrow for new quests.|r")
+                break
+            end
         end
     end
     
