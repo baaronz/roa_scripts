@@ -9,7 +9,7 @@ if AIO.AddAddon() then
     
     -- Configuration
     local DAILY_QUEST_LIMIT = 2
-    local NPC_ENTRY_ID = 1275 -- Change this to your NPC entry ID
+    local NPC_ENTRY_ID = 9000038 -- Change this to your NPC entry ID
     
     -- Helper function to get today's date string
     local function GetTodayDateString()
