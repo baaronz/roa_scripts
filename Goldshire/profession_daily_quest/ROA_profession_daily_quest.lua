@@ -9,7 +9,7 @@ if AIO.AddAddon() then
     
     -- Configuration
     local DAILY_QUEST_LIMIT = 2
-    local NPC_ENTRY_ID = 60605 -- Change this to your NPC entry ID
+    local NPC_ENTRY_ID = 1275 -- Change this to your NPC entry ID
     
     -- Helper function to get today's date string
     local function GetTodayDateString()
@@ -153,9 +153,15 @@ if AIO.AddAddon() then
         return quests, totalTaken, DAILY_QUEST_LIMIT
     end
     
-    -- Right-click NPC interaction (replaces gossip menu)
-    local function OnCreatureInteract(event, player, creature)
-        if creature:GetEntry() == NPC_ENTRY_ID then
+    -- Gossip menu system
+    local function OnGossipHello(event, player, object)
+        player:GossipClearMenu()
+        player:GossipMenuAddItem(0, "|TInterface\\Icons\\Trade_Engineering:20:20|t View Profession Daily Quests", 0, 1)
+        player:GossipSendMenu(1, object, 1)
+    end
+    
+    local function OnGossipSelect(event, player, object, sender, intid, code, menu_id)
+        if intid == 1 then
             local quests, totalTaken, limit = GetProfessionDailyQuests(player)
             
             local professionData = {
@@ -167,10 +173,13 @@ if AIO.AddAddon() then
             }
             
             AIO.Msg():Add("ProfessionDailyQuest", "ShowProfessionBoard", professionData):Send(player)
+            
+            player:GossipComplete()
         end
     end
-    
-    RegisterPlayerEvent(36, OnCreatureInteract) -- PLAYER_EVENT_ON_INTERACT_WITH_CREATURE
+
+    RegisterCreatureGossipEvent(NPC_ENTRY_ID, 1, OnGossipHello)
+    RegisterCreatureGossipEvent(NPC_ENTRY_ID, 2, OnGossipSelect)
     
     -- Handle quest acceptance
     local function HandleProfessionQuestRequest(player, msgType, data)
