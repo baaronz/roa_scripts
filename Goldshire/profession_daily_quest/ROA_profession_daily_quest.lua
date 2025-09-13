@@ -1,10 +1,3 @@
--- Define warn function if it doesn't exist (fixes optlex.lua error)
-if not warn then
-    warn = function(...)
-        print("WARNING:", ...)
-    end
-end
-
 local AIO = AIO or require("AIO")
 
 if not AIO.IsMainState() then
@@ -16,7 +9,7 @@ if AIO.AddAddon() then
     
     -- Configuration
     local DAILY_QUEST_LIMIT = 2
-    local NPC_ENTRY_ID = 9000038 -- Change this to your NPC entry ID
+    local NPC_ENTRY_ID = 9000038
     
     -- Helper function to get today's date string
     local function GetTodayDateString()
@@ -261,7 +254,7 @@ if AIO.AddAddon() then
         end
     end
     
-    RegisterPlayerEvent(8, OnQuestComplete) -- PLAYER_EVENT_ON_QUEST_COMPLETE
+    RegisterPlayerEvent(8, OnQuestComplete)
     
     AIO.RegisterEvent("ProfessionDailyQuest", HandleProfessionQuestRequest)
     return
@@ -273,7 +266,7 @@ local isWindowVisible = false
 
 local function CreateProfessionBoardWindow()
     local window = CreateFrame("Frame", "ProfessionBoardWindow", UIParent)
-    window:SetSize(700, 500) -- Smaller window for better fit
+    window:SetSize(700, 500)
     window:SetPoint("CENTER", UIParent, "CENTER")
     window:SetMovable(false)
     window:EnableMouse(true)
@@ -346,7 +339,7 @@ local function CreateProfessionBoardWindow()
     
     -- Scrollable content frame
     local contentFrame = CreateFrame("Frame", nil, window)
-    contentFrame:SetSize(660, 350) -- Reduced height for more compact design
+    contentFrame:SetSize(660, 350)
     contentFrame:SetPoint("TOP", progressFrame, "BOTTOM", 0, -15)
     contentFrame:SetBackdrop({
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -370,11 +363,11 @@ local function CreateProfessionBoardWindow()
     window.scrollChild = scrollChild
     window.scrollFrame = scrollFrame
     
-    -- Create compact quest frames (more can fit now)
+    -- Create compact quest frames
     window.optionFrames = {}
-    for i = 1, 20 do -- Increased from 3 to 20
+    for i = 1, 20 do
         local optionFrame = CreateFrame("Frame", nil, scrollChild)
-        optionFrame:SetSize(580, 70) -- Reduced height from 110 to 70 for more compact design
+        optionFrame:SetSize(580, 70)
         
         if i == 1 then
             optionFrame:SetPoint("TOP", scrollChild, "TOP", 0, -10)
@@ -425,11 +418,11 @@ local function CreateProfessionBoardWindow()
         
         -- Smaller icon
         local image = optionFrame:CreateTexture(nil, "ARTWORK")
-        image:SetSize(32, 32) -- Reduced from 48x48 to 32x32
+        image:SetSize(32, 32)
         image:SetPoint("TOPLEFT", optionFrame, "TOPLEFT", 15, -19)
         optionFrame.image = image
         
-        -- Compact description (shorter)
+        -- Compact description
         local description = optionFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         description:SetPoint("TOPLEFT", image, "TOPRIGHT", 10, 0)
         description:SetPoint("BOTTOMRIGHT", optionFrame, "BOTTOMRIGHT", -80, 25)
@@ -446,7 +439,7 @@ local function CreateProfessionBoardWindow()
         
         -- Compact button
         local button = CreateFrame("Button", nil, optionFrame)
-        button:SetSize(100, 24) -- Smaller button
+        button:SetSize(100, 24)
         button:SetPoint("BOTTOMRIGHT", optionFrame, "BOTTOMRIGHT", -15, 8)
         
         button:SetBackdrop({
@@ -651,7 +644,7 @@ function ProfessionDailyQuestAddon:UpdateProfessionData(data)
         
         -- Update scroll child height based on number of visible quests
         local visibleQuests = math.min(#data.options or 0, 20)
-        local newHeight = math.max(visibleQuests * 75, 100) -- 75 pixels per quest (70 height + 5 margin)
+        local newHeight = math.max(visibleQuests * 75, 100)
         self.window.scrollChild:SetHeight(newHeight)
     end
 end
