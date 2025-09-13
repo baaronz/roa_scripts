@@ -34,7 +34,7 @@ if AIO.AddAddon() then
             }
         end
         
-        local result = WorldDBQuery("SELECT quest_id, quest_name, description, level_required, level_max, icon, background_image FROM roa_profession_daily_quests WHERE active = 1 ORDER BY sort_order ASC, quest_name ASC")
+        local result = CharDBQuery("SELECT quest_id, quest_name, description, level_required, level_max, icon, background_image FROM roa_profession_daily_quests WHERE active = 1 ORDER BY sort_order ASC, quest_name ASC")
         
         if result then
             repeat
