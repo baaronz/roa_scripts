@@ -167,41 +167,12 @@ local isWindowVisible = false
             end
         end)
         
-        -- Enhanced main window backdrop
         window:SetBackdrop({
-            bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
-            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Gold-Border",
-            tile = true, tileSize = 32, edgeSize = 32,
+            bgFile = "Interface\\AchievementFrame\\UI-Achievement-Parchment-Horizontal",
+            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
             insets = { left = 11, right = 12, top = 12, bottom = 11 }
         })
-        window:SetBackdropColor(0.05, 0.05, 0.08, 0.95)
-        window:SetBackdropBorderColor(0.8, 0.7, 0.4, 1.0)
         window:SetAlpha(1.0)
-        
-        -- Add decorative corner elements
-        local topLeftCorner = window:CreateTexture(nil, "ARTWORK")
-        topLeftCorner:SetSize(32, 32)
-        topLeftCorner:SetPoint("TOPLEFT", window, "TOPLEFT", -5, 5)
-        topLeftCorner:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Corner-TopLeft")
-        topLeftCorner:SetVertexColor(0.8, 0.7, 0.4, 1)
-        
-        local topRightCorner = window:CreateTexture(nil, "ARTWORK")
-        topRightCorner:SetSize(32, 32)
-        topRightCorner:SetPoint("TOPRIGHT", window, "TOPRIGHT", 5, 5)
-        topRightCorner:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Corner-TopRight")
-        topRightCorner:SetVertexColor(0.8, 0.7, 0.4, 1)
-        
-        local bottomLeftCorner = window:CreateTexture(nil, "ARTWORK")
-        bottomLeftCorner:SetSize(32, 32)
-        bottomLeftCorner:SetPoint("BOTTOMLEFT", window, "BOTTOMLEFT", -5, -5)
-        bottomLeftCorner:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Corner-BottomLeft")
-        bottomLeftCorner:SetVertexColor(0.8, 0.7, 0.4, 1)
-        
-        local bottomRightCorner = window:CreateTexture(nil, "ARTWORK")
-        bottomRightCorner:SetSize(32, 32)
-        bottomRightCorner:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", 5, -5)
-        bottomRightCorner:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Corner-BottomRight")
-        bottomRightCorner:SetVertexColor(0.8, 0.7, 0.4, 1)
         
     local closeButton = CreateFrame("Button", nil, window)
     closeButton:SetSize(28, 28)
@@ -224,60 +195,31 @@ local isWindowVisible = false
         GameTooltip:Hide()
     end)
     
-    -- Enhanced title with decorative elements
-    local titleBackground = window:CreateTexture(nil, "BACKGROUND")
-    titleBackground:SetSize(600, 50)
-    titleBackground:SetPoint("TOP", window, "TOP", 0, -15)
-    titleBackground:SetColorTexture(0.1, 0.08, 0.05, 0.6)
-    titleBackground:SetGradientAlpha("VERTICAL", 0.15, 0.12, 0.08, 0.8, 0.05, 0.04, 0.02, 0.4)
-    
     window.title = window:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     window.title:SetPoint("TOP", window, "TOP", 0, -20)
     window.title:SetText("DAILY PROFESSION QUESTS")
-    window.title:SetTextColor(1.0, 0.9, 0.6, 1)
-    window.title:SetShadowOffset(2, -2)
-    window.title:SetShadowColor(0, 0, 0, 0.8)
+    window.title:SetTextColor(0.9, 0.8, 0.5, 1)
     
-    -- Add decorative lines
-    local leftLine = window:CreateTexture(nil, "ARTWORK")
-    leftLine:SetSize(100, 2)
-    leftLine:SetPoint("RIGHT", window.title, "LEFT", -10, 0)
-    leftLine:SetColorTexture(0.8, 0.7, 0.4, 0.8)
-    
-    local rightLine = window:CreateTexture(nil, "ARTWORK")
-    rightLine:SetSize(100, 2)
-    rightLine:SetPoint("LEFT", window.title, "RIGHT", 10, 0)
-    rightLine:SetColorTexture(0.8, 0.7, 0.4, 0.8)
-    
-    window.subtitle = window:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    window.subtitle:SetPoint("TOP", window.title, "BOTTOM", 0, -5)
+    window.subtitle = window:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    window.subtitle:SetPoint("TOP", window.title, "BOTTOM", 0, -3)
     window.subtitle:SetText("Choose up to 2 daily profession quests")
-    window.subtitle:SetTextColor(0.9, 0.8, 0.6, 1)
-    window.subtitle:SetShadowOffset(1, -1)
-    window.subtitle:SetShadowColor(0, 0, 0, 0.6)
+    window.subtitle:SetTextColor(0.7, 0.7, 0.7, 0.8)
     window.titleText = window.subtitle
     
     local contentFrame = CreateFrame("Frame", nil, window)
     contentFrame:SetSize(650, 500)
     contentFrame:SetPoint("TOP", window, "TOP", 0, -50)
-    -- Enhanced content frame styling
     contentFrame:SetBackdrop({
-        bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
+        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
         tile = true, tileSize = 32, edgeSize = 16,
-        insets = { left = 8, right = 8, top = 8, bottom = 8 }
+        insets = { left = 4, right = 4, top = 4, bottom = 4 }
     })
-    contentFrame:SetBackdropColor(0.03, 0.03, 0.06, 0.9)
-    contentFrame:SetBackdropBorderColor(0.6, 0.5, 0.3, 0.9)
+    contentFrame:SetBackdropColor(0.06, 0.06, 0.1, 0.95)
+    contentFrame:SetBackdropBorderColor(0.5, 0.5, 0.6, 0.8)
     
-    -- Add inner glow effect
-    local innerGlow = contentFrame:CreateTexture(nil, "BACKGROUND")
-    innerGlow:SetAllPoints(contentFrame)
-    innerGlow:SetColorTexture(0.1, 0.08, 0.05, 0.3)
-    innerGlow:SetGradientAlpha("VERTICAL", 0.08, 0.06, 0.04, 0.4, 0.02, 0.02, 0.03, 0.2)
-    
-    local contentTitle = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    contentTitle:SetPoint("TOP", contentFrame, "TOP", 0, -15)
+    local contentTitle = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    contentTitle:SetPoint("TOP", contentFrame, "TOP", 0, -10)
     contentTitle:SetText("Available Quests")
     contentTitle:SetTextColor(0.9, 0.8, 0.5, 1)
     contentTitle:SetDrawLayer("OVERLAY", 1)
@@ -300,8 +242,8 @@ local isWindowVisible = false
     
     -- Create quest container frame
     local questContainer = CreateFrame("Frame", nil, contentFrame)
-    questContainer:SetSize(620, 450)
-    questContainer:SetPoint("TOP", contentFrame, "TOP", 0, -30)
+    questContainer:SetSize(630, 460)
+    questContainer:SetPoint("TOP", contentFrame, "TOP", 0, -25)
     
     window.questContainer = questContainer
     window.optionFrames = {}
@@ -309,139 +251,105 @@ local isWindowVisible = false
     -- Function to create quest frame
     local function CreateQuestFrame(parent, index)
         local optionFrame = CreateFrame("Frame", nil, parent)
-        optionFrame:SetSize(290, 55)
+        optionFrame:SetSize(300, 60)
         
         -- Calculate position in 2-column grid with proper spacing
         local col = (index - 1) % 2
         local row = math.floor((index - 1) / 2)
-        local xOffset = 15 + (col * 305) -- 15px left margin + 290 width + 15 spacing
-        local yOffset = -15 - (row * 65) -- 15px top margin + 55 height + 10 spacing
+        local xOffset = 10 + (col * 315) -- 10px left margin + 300 width + 5 spacing
+        local yOffset = -10 - (row * 70) -- 10px top margin + 60 height + 10 spacing
         
         optionFrame:SetPoint("TOPLEFT", parent, "TOPLEFT", xOffset, yOffset)
         
-        -- Enhanced backdrop with better styling
         optionFrame:SetBackdrop({
             bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-            tile = true, tileSize = 32, edgeSize = 12,
-            insets = { left = 8, right = 8, top = 8, bottom = 8 }
+            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+            tile = true, tileSize = 32, edgeSize = 6,
+            insets = { left = 3, right = 3, top = 3, bottom = 3 }
         })
-        optionFrame:SetBackdropColor(0.08, 0.08, 0.12, 0.9)
-        optionFrame:SetBackdropBorderColor(0.6, 0.5, 0.3, 0.8)
-        
-        -- Add subtle gradient effect
-        local gradientTexture = optionFrame:CreateTexture(nil, "BACKGROUND")
-        gradientTexture:SetAllPoints(optionFrame)
-        gradientTexture:SetColorTexture(0.15, 0.12, 0.08, 0.3)
-        gradientTexture:SetGradientAlpha("VERTICAL", 0.2, 0.15, 0.1, 0.3, 0.05, 0.05, 0.05, 0.1)
+        optionFrame:SetBackdropColor(0.1, 0.1, 0.15, 0.95)
+        optionFrame:SetBackdropBorderColor(0.4, 0.4, 0.5, 0.8)
         
         local backgroundImage = optionFrame:CreateTexture(nil, "BACKGROUND")
         backgroundImage:SetAllPoints(optionFrame)
         backgroundImage:SetTexCoord(0, 1, 0, 1)
-        backgroundImage:SetAlpha(0.4)
+        backgroundImage:SetAlpha(0.7)
         backgroundImage:SetBlendMode("BLEND")
         optionFrame.backgroundImage = backgroundImage
         
-        -- Enhanced hover effects
         optionFrame:SetScript("OnEnter", function(self)
-            self:SetBackdropColor(0.12, 0.12, 0.16, 0.95)
-            self:SetBackdropBorderColor(0.8, 0.7, 0.4, 1.0)
-            gradientTexture:SetGradientAlpha("VERTICAL", 0.25, 0.2, 0.12, 0.4, 0.08, 0.08, 0.08, 0.2)
+            self:SetBackdropColor(0.13, 0.13, 0.18, 0.95)
+            self:SetBackdropBorderColor(0.6, 0.6, 0.7, 0.8)
         end)
         optionFrame:SetScript("OnLeave", function(self)
-            self:SetBackdropColor(0.08, 0.08, 0.12, 0.9)
-            self:SetBackdropBorderColor(0.6, 0.5, 0.3, 0.8)
-            gradientTexture:SetGradientAlpha("VERTICAL", 0.2, 0.15, 0.1, 0.3, 0.05, 0.05, 0.05, 0.1)
+            self:SetBackdropColor(0.1, 0.1, 0.15, 0.95)
+            self:SetBackdropBorderColor(0.4, 0.4, 0.5, 0.8)
         end)
         
-        -- Quest icon with border
-        local iconBorder = optionFrame:CreateTexture(nil, "ARTWORK")
-        iconBorder:SetSize(34, 34)
-        iconBorder:SetPoint("LEFT", optionFrame, "LEFT", 12, 0)
-        iconBorder:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
-        iconBorder:SetVertexColor(0.6, 0.5, 0.3, 0.8)
-        
         local image = optionFrame:CreateTexture(nil, "ARTWORK")
-        image:SetSize(30, 30)
-        image:SetPoint("CENTER", iconBorder, "CENTER", 0, 0)
+        image:SetSize(36, 36)
+        image:SetPoint("LEFT", optionFrame, "LEFT", 8, 0)
         optionFrame.image = image
         
-        -- Title with better positioning
-        local title = optionFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        title:SetPoint("TOPLEFT", iconBorder, "TOPRIGHT", 8, 0)
-        title:SetPoint("TOPRIGHT", optionFrame, "TOPRIGHT", -85, 0)
+        local title = optionFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        title:SetPoint("TOPLEFT", image, "TOPRIGHT", 6, 8)
+        title:SetPoint("TOPRIGHT", optionFrame, "TOPRIGHT", -80, 8)
         title:SetJustifyH("LEFT")
-        title:SetTextColor(1.0, 0.9, 0.6, 1)
-        title:SetMaxLines(1)
+        title:SetTextColor(0.9, 0.8, 0.5, 1)
+        title:SetHeight(14)
         optionFrame.title = title
         
-        -- Level text with better styling
         local levelText = optionFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        levelText:SetPoint("TOPRIGHT", optionFrame, "TOPRIGHT", -12, -8)
-        levelText:SetTextColor(0.8, 0.8, 0.9, 1)
+        levelText:SetPoint("TOPRIGHT", optionFrame, "TOPRIGHT", -8, -8)
+        levelText:SetTextColor(0.7, 0.7, 0.7, 0.8)
         optionFrame.levelText = levelText
         
-        -- Description with proper text wrapping
         local description = optionFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        description:SetPoint("TOPLEFT", iconBorder, "TOPRIGHT", 8, -18)
-        description:SetPoint("BOTTOMRIGHT", optionFrame, "BOTTOMRIGHT", -85, 8)
+        description:SetPoint("TOPLEFT", image, "TOPRIGHT", 6, -8)
+        description:SetPoint("BOTTOMRIGHT", optionFrame, "BOTTOMRIGHT", -80, 10)
         description:SetJustifyH("LEFT")
         description:SetJustifyV("TOP")
-        description:SetTextColor(0.85, 0.85, 0.85, 1)
-        description:SetMaxLines(2)
+        description:SetTextColor(0.8, 0.8, 0.8, 1)
+        description:SetHeight(24)
         optionFrame.description = description
         
-        -- Enhanced button styling
         local button = CreateFrame("Button", nil, optionFrame)
-        button:SetSize(70, 25)
-        button:SetPoint("RIGHT", optionFrame, "RIGHT", -10, 0)
+        button:SetSize(65, 24)
+        button:SetPoint("RIGHT", optionFrame, "RIGHT", -6, 0)
         
-        -- Professional button styling
         button:SetBackdrop({
-            bgFile = "Interface\\Buttons\\UI-Panel-Button-Up",
-            edgeFile = "Interface\\Buttons\\UI-Panel-Button-Border",
-            tile = false, edgeSize = 16,
-            insets = { left = 4, right = 4, top = 4, bottom = 4 }
+            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+            tile = true, tileSize = 32, edgeSize = 6,
+            insets = { left = 3, right = 3, top = 3, bottom = 3 }
         })
-        button:SetBackdropColor(0.2, 0.35, 0.6, 0.8)
-        button:SetBackdropBorderColor(0.8, 0.7, 0.4, 1)
-        
-        -- Button gradient effect
-        local buttonGradient = button:CreateTexture(nil, "BACKGROUND")
-        buttonGradient:SetAllPoints(button)
-        buttonGradient:SetColorTexture(0.3, 0.5, 0.8, 0.4)
-        buttonGradient:SetGradientAlpha("VERTICAL", 0.4, 0.6, 0.9, 0.6, 0.2, 0.3, 0.5, 0.3)
+        button:SetBackdropColor(0.15, 0.15, 0.2, 0.95)
+        button:SetBackdropBorderColor(0.5, 0.5, 0.6, 1)
         
         button.text = button:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         button.text:SetPoint("CENTER", button, "CENTER", 0, 0)
         button.text:SetText("Accept")
-        button.text:SetTextColor(1, 1, 1, 1)
-        button.text:SetShadowOffset(1, -1)
-        button.text:SetShadowColor(0, 0, 0, 0.8)
+        button.text:SetTextColor(0.9, 0.9, 0.9, 1)
         
         button:SetScript("OnEnter", function(self)
-            self:SetBackdropColor(0.25, 0.4, 0.7, 1.0)
-            self:SetBackdropBorderColor(1.0, 0.8, 0.5, 1)
-            buttonGradient:SetGradientAlpha("VERTICAL", 0.5, 0.7, 1.0, 0.8, 0.25, 0.4, 0.6, 0.5)
+            self:SetBackdropColor(0.2, 0.2, 0.25, 0.95)
+            self:SetBackdropBorderColor(0.7, 0.7, 0.8, 1)
             self.text:SetTextColor(1, 1, 1, 1)
         end)
         
         button:SetScript("OnLeave", function(self)
-            self:SetBackdropColor(0.2, 0.35, 0.6, 0.8)
-            self:SetBackdropBorderColor(0.8, 0.7, 0.4, 1)
-            buttonGradient:SetGradientAlpha("VERTICAL", 0.4, 0.6, 0.9, 0.6, 0.2, 0.3, 0.5, 0.3)
-            self.text:SetTextColor(1, 1, 1, 1)
-        end)
-        
-        button:SetScript("OnMouseDown", function(self)
-            self:SetBackdropColor(0.15, 0.25, 0.45, 0.9)
-            buttonGradient:SetGradientAlpha("VERTICAL", 0.2, 0.3, 0.5, 0.4, 0.4, 0.6, 0.9, 0.7)
+            self:SetBackdropColor(0.15, 0.15, 0.2, 0.95)
+            self:SetBackdropBorderColor(0.5, 0.5, 0.6, 1)
             self.text:SetTextColor(0.9, 0.9, 0.9, 1)
         end)
         
+        button:SetScript("OnMouseDown", function(self)
+            self:SetBackdropColor(0.1, 0.1, 0.15, 0.95)
+            self.text:SetTextColor(0.8, 0.8, 0.8, 1)
+        end)
+        
         button:SetScript("OnMouseUp", function(self)
-            self:SetBackdropColor(0.25, 0.4, 0.7, 1.0)
-            buttonGradient:SetGradientAlpha("VERTICAL", 0.5, 0.7, 1.0, 0.8, 0.25, 0.4, 0.6, 0.5)
+            self:SetBackdropColor(0.2, 0.2, 0.25, 0.95)
             self.text:SetTextColor(1, 1, 1, 1)
         end)
         
