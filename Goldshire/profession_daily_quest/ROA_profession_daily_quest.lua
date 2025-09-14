@@ -250,11 +250,40 @@ local isWindowVisible = false
     noQuestsDescription:SetJustifyH("CENTER")
     window.noQuestsDescription = noQuestsDescription
     
-    -- Create quest container frame
-    local questContainer = CreateFrame("Frame", nil, contentFrame)
-    questContainer:SetSize(630, 460)
-    questContainer:SetPoint("TOP", contentFrame, "TOP", 0, -25)
+    -- Create scroll frame for quest container
+    local scrollFrame = CreateFrame("ScrollFrame", nil, contentFrame)
+    scrollFrame:SetSize(630, 460)
+    scrollFrame:SetPoint("TOP", contentFrame, "TOP", 0, -25)
     
+    -- Create scroll child frame (this will contain the actual quest frames)
+    local questContainer = CreateFrame("Frame", nil, scrollFrame)
+    questContainer:SetSize(630, 1) -- Height will be set dynamically based on content
+    scrollFrame:SetScrollChild(questContainer)
+    
+    -- Create scroll bar
+    local scrollBar = CreateFrame("Slider", nil, scrollFrame, "UIPanelScrollBarTemplate")
+    scrollBar:SetPoint("TOPLEFT", scrollFrame, "TOPRIGHT", 4, -16)
+    scrollBar:SetPoint("BOTTOMLEFT", scrollFrame, "BOTTOMRIGHT", 4, 16)
+    scrollBar:SetMinMaxValues(1, 100)
+    scrollBar:SetValueStep(1)
+    scrollBar.scrollStep = 1
+    scrollBar:SetValue(0)
+    scrollBar:SetWidth(16)
+    scrollBar:SetScript("OnValueChanged", function(self, value)
+        self:GetParent():SetVerticalScroll(value)
+    end)
+    
+    -- Enable mouse wheel scrolling
+    scrollFrame:EnableMouseWheel(true)
+    scrollFrame:SetScript("OnMouseWheel", function(self, delta)
+        local newValue = scrollBar:GetValue() - (delta * 20)
+        local minVal, maxVal = scrollBar:GetMinMaxValues()
+        newValue = math.max(minVal, math.min(maxVal, newValue))
+        scrollBar:SetValue(newValue)
+    end)
+    
+    window.scrollFrame = scrollFrame
+    window.scrollBar = scrollBar
     window.questContainer = questContainer
     window.optionFrames = {}
     
@@ -434,8 +463,8 @@ function CallBoardAddon:UpdateCallBoardData(data)
             if self.window.noQuestsDescription then
                 self.window.noQuestsDescription:Hide()
             end
-            if self.window.questContainer then
-                self.window.questContainer:Show()
+            if self.window.scrollFrame then
+                self.window.scrollFrame:Show()
             end
             
             -- Clear existing frames
@@ -443,6 +472,7 @@ function CallBoardAddon:UpdateCallBoardData(data)
             
             -- Create new quest frames
             if data.options then
+                local numQuests = #data.options
                 for i, option in ipairs(data.options) do
                     local optionFrame = self.window.CreateQuestFrame(self.window.questContainer, i)
                     optionFrame.title:SetText(option.title)
@@ -460,6 +490,25 @@ function CallBoardAddon:UpdateCallBoardData(data)
                     optionFrame:Show()
                     table.insert(self.window.optionFrames, optionFrame)
                 end
+                
+                -- Calculate required height for quest container
+                local numRows = math.ceil(numQuests / 2)
+                local requiredHeight = math.max(460, (numRows * 70) + 20) -- 70px per row + 20px padding
+                self.window.questContainer:SetHeight(requiredHeight)
+                
+                -- Update scroll bar
+                if self.window.scrollBar then
+                    local maxScroll = math.max(0, requiredHeight - 460)
+                    self.window.scrollBar:SetMinMaxValues(0, maxScroll)
+                    self.window.scrollBar:SetValue(0)
+                    
+                    -- Show/hide scroll bar based on whether scrolling is needed
+                    if maxScroll > 0 then
+                        self.window.scrollBar:Show()
+                    else
+                        self.window.scrollBar:Hide()
+                    end
+                end
             end
         else
             if self.window.contentTitle then
@@ -471,8 +520,11 @@ function CallBoardAddon:UpdateCallBoardData(data)
             if self.window.noQuestsDescription then
                 self.window.noQuestsDescription:Show()
             end
-            if self.window.questContainer then
-                self.window.questContainer:Hide()
+            if self.window.scrollFrame then
+                self.window.scrollFrame:Hide()
+            end
+            if self.window.scrollBar then
+                self.window.scrollBar:Hide()
             end
         end
     end
