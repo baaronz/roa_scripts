@@ -10,6 +10,21 @@ if AIO.AddAddon() then
     local function GetCallBoardQuests(player)
         local quests = {}
         local playerGuid = player:GetGUIDLow()
+        local playerLevel = player:GetLevel()
+        
+        -- Check if player is level 60
+        if playerLevel < 60 then
+            return {
+                {
+                    questId = 0,
+                    title = "Level Requirement Not Met",
+                    description = "You must be level 60 to access daily profession quests. Return when you have reached the maximum level!",
+                    image = "Interface\\Icons\\INV_Misc_QuestionMark",
+                    buttonText = "Return Later"
+                }
+            }
+        end
+        
         local today = os.time()
         local todayStart = today - (today % 86400) -- Start of today in Unix time
         
@@ -39,9 +54,6 @@ if AIO.AddAddon() then
         if result then
             repeat
                 local questId = result:GetUInt32(0)
-                local levelRequired = result:GetUInt32(3)
-                local levelMax = result:GetUInt32(4)
-                local playerLevel = player:GetLevel()
                 
                 -- Check if player has already completed this daily quest today
                 local questCompletedResult = CharDBQuery("SELECT quest FROM character_queststatus_daily WHERE guid = " .. playerGuid .. " AND quest = " .. questId .. " AND time >= " .. todayStart)
@@ -50,13 +62,11 @@ if AIO.AddAddon() then
                 -- Check if player already has this quest
                 local hasQuest = player:HasQuest(questId)
                 
-                if not hasQuest and not hasCompletedToday and playerLevel >= levelRequired and playerLevel <= levelMax then
+                if not hasQuest and not hasCompletedToday then
                     local questData = {
                         questId = questId,
                         title = result:GetString(1),
                         description = result:GetString(2),
-                        levelRequired = levelRequired,
-                        levelMax = levelMax,
                         image = result:GetString(5),
                         backgroundImage = result:GetString(6),
                         buttonText = "Accept Quest"
@@ -208,7 +218,7 @@ local isWindowVisible = false
     
     local contentFrame = CreateFrame("Frame", nil, window)
     contentFrame:SetSize(650, 500)
-    contentFrame:SetPoint("TOP", window, "TOP", 0, -50)
+    contentFrame:SetPoint("TOP", window, "TOP", 0, -70)
     contentFrame:SetBackdrop({
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -299,18 +309,13 @@ local isWindowVisible = false
         title:SetHeight(14)
         optionFrame.title = title
         
-        local levelText = optionFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        levelText:SetPoint("TOPRIGHT", optionFrame, "TOPRIGHT", -8, -8)
-        levelText:SetTextColor(0.7, 0.7, 0.7, 0.8)
-        optionFrame.levelText = levelText
-        
         local description = optionFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         description:SetPoint("TOPLEFT", image, "TOPRIGHT", 6, -8)
         description:SetPoint("BOTTOMRIGHT", optionFrame, "BOTTOMRIGHT", -80, 10)
         description:SetJustifyH("LEFT")
         description:SetJustifyV("TOP")
         description:SetTextColor(0.8, 0.8, 0.8, 1)
-        description:SetHeight(24)
+        description:SetHeight(32)
         optionFrame.description = description
         
         local button = CreateFrame("Button", nil, optionFrame)
@@ -326,7 +331,7 @@ local isWindowVisible = false
         button:SetBackdropColor(0.15, 0.15, 0.2, 0.95)
         button:SetBackdropBorderColor(0.5, 0.5, 0.6, 1)
         
-        button.text = button:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        button.text = button:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         button.text:SetPoint("CENTER", button, "CENTER", 0, 0)
         button.text:SetText("Accept")
         button.text:SetTextColor(0.9, 0.9, 0.9, 1)
@@ -450,16 +455,6 @@ function CallBoardAddon:UpdateCallBoardData(data)
                         optionFrame.backgroundImage:Show()
                     else
                         optionFrame.backgroundImage:Hide()
-                    end
-                    
-                    if option.levelRequired then
-                        if option.levelMax and option.levelMax > option.levelRequired then
-                            optionFrame.levelText:SetText("Level " .. option.levelRequired .. "-" .. option.levelMax)
-                        else
-                            optionFrame.levelText:SetText("Level " .. option.levelRequired)
-                        end
-                    else
-                        optionFrame.levelText:SetText("")
                     end
                     
                     optionFrame:Show()
