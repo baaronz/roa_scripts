@@ -38,8 +38,14 @@ local function TeachSpellToAccountCharacters(accountId, spellId, learnedByCharac
             local spellQuery = CharDBQuery("SELECT 1 FROM character_spell WHERE guid = " .. charData.guid .. " AND spell = " .. spellId)
             
             if not spellQuery then
-                CharDBExecute("INSERT INTO character_spell (guid, spell, active, disabled) VALUES (" .. charData.guid .. ", " .. spellId .. ", 1, 0)")
-                taughtCount = taughtCount + 1
+                local targetPlayer = GetPlayerByGUID(charData.guid)
+                if targetPlayer then
+                    targetPlayer:LearnSpell(spellId)
+                    taughtCount = taughtCount + 1
+                else
+                    CharDBExecute("INSERT INTO character_spell (guid, spell, active, disabled) VALUES (" .. charData.guid .. ", " .. spellId .. ", 1, 0)")
+                    taughtCount = taughtCount + 1
+                end
                 
                 local onlinePlayer = GetPlayerByGUID(charData.guid)
                 if onlinePlayer then
@@ -78,12 +84,11 @@ local function OnPlayerLearnSpell(event, player, spellId)
     end
 end
 
-local function CheckAndImportExistingSpells(accountId, characterGuid)
+local function CheckAndImportExistingSpells(player, accountId, characterGuid)
     for _, spellId in ipairs(ACCOUNT_WIDE_SPELLS) do
-        local hasSpell = CharDBQuery("SELECT 1 FROM character_spell WHERE guid = " .. characterGuid .. " AND spell = " .. spellId)
         local inAccountTable = CharDBQuery("SELECT 1 FROM account_wide_spells WHERE account_id = " .. accountId .. " AND spell_id = " .. spellId)
         
-        if hasSpell and not inAccountTable then
+        if player:HasSpell(spellId) and not inAccountTable then
             CharDBExecute("INSERT INTO account_wide_spells (account_id, spell_id, learned_by_character, taught_to_all) VALUES (" .. accountId .. ", " .. spellId .. ", " .. characterGuid .. ", 0)")
         end
     end
@@ -93,7 +98,7 @@ local function OnPlayerLogin(event, player)
     local accountId = player:GetAccountId()
     local characterGuid = player:GetGUIDLow()
     
-    CheckAndImportExistingSpells(accountId, characterGuid)
+    CheckAndImportExistingSpells(player, accountId, characterGuid)
     
     local query = CharDBQuery("SELECT spell_id FROM account_wide_spells WHERE account_id = " .. accountId)
     
@@ -101,10 +106,8 @@ local function OnPlayerLogin(event, player)
         repeat
             local spellId = query:GetUInt32(0)
             
-            local spellQuery = CharDBQuery("SELECT 1 FROM character_spell WHERE guid = " .. characterGuid .. " AND spell = " .. spellId)
-            
-            if not spellQuery then
-                CharDBExecute("INSERT INTO character_spell (guid, spell, active, disabled) VALUES (" .. characterGuid .. ", " .. spellId .. ", 1, 0)")
+            if not player:HasSpell(spellId) then
+                player:LearnSpell(spellId)
                 player:SendBroadcastMessage("|c979ABDFFYou have learned an account-wide spell! (ID: " .. spellId .. ")|r")
             end
         until not query:NextRow()
