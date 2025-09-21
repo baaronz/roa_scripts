@@ -5,5 +5,5 @@ CREATE TABLE IF NOT EXISTS `account_wide_spells` (
     `learned_timestamp` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'When the spell was first learned',
     `taught_to_all` TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Whether all characters have been taught this spell',
     
-    PRIMARY KEY (`account_id`, `spell_id`),
+    PRIMARY KEY (`account_id`, `spell_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Account-wide spell learning system';
