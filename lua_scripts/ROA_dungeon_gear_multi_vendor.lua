@@ -12,8 +12,7 @@ local function OnHello(event, player, object)
     player:GossipMenuAddItem(2, "Warlock", 0, 8)
     player:GossipMenuAddItem(2, "Druid", 0, 9)
     player:GossipMenuAddItem(2, "Weapons", 0, 10)
-    player:GossipMenuAddItem(2, "Offsets", 0, 11)
-    player:GossipMenuAddItem(2, "Dungeon Gear", 0, 12)
+    player:GossipMenuAddItem(2, "Other Gear", 0, 11)
     player:GossipMenuAddItem(0, "Goodbye.", 0, 99)
     player:GossipSendMenu(1, object, 1)
 end
@@ -41,8 +40,6 @@ local function OnSelect(event, player, object, sender, intid, code, menu_id)
         player:SendListInventory(object, 100019)
     elseif intid == 11 then
         player:SendListInventory(object, 100020)
-    elseif intid == 12 then
-        player:SendListInventory(object, 100021)
     elseif intid == 99 then
         player:SendBroadcastMessage("Farewell!")
     end
