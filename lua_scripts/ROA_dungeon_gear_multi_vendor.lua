@@ -20,29 +20,29 @@ end
 
 local function OnSelect(event, player, object, sender, intid, code, menu_id)
     if intid == 1 then
-        player:SendListInventory(100010)
+        player:SendListInventory(object, 100010)
     elseif intid == 2 then
-        player:SendListInventory(100011)
+        player:SendListInventory(object, 100011)
     elseif intid == 3 then
-        player:SendListInventory(100012)
+        player:SendListInventory(object, 100012)
     elseif intid == 4 then
-        player:SendListInventory(100013)
+        player:SendListInventory(object, 100013)
     elseif intid == 5 then
-        player:SendListInventory(100014)
+        player:SendListInventory(object, 100014)
     elseif intid == 6 then
-        player:SendListInventory(100015)
+        player:SendListInventory(object, 100015)
     elseif intid == 7 then
-        player:SendListInventory(100016)
+        player:SendListInventory(object, 100016)
     elseif intid == 8 then
-        player:SendListInventory(100017)
+        player:SendListInventory(object, 100017)
     elseif intid == 9 then
-        player:SendListInventory(100018)
+        player:SendListInventory(object, 100018)
     elseif intid == 10 then
-        player:SendListInventory(100019)
+        player:SendListInventory(object, 100019)
     elseif intid == 11 then
-        player:SendListInventory(100020)
+        player:SendListInventory(object, 100020)
     elseif intid == 12 then
-        player:SendListInventory(100021)
+        player:SendListInventory(object, 100021)
     elseif intid == 99 then
         player:SendBroadcastMessage("Farewell!")
     end
