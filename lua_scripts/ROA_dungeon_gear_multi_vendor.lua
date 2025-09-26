@@ -27,11 +27,11 @@ local function OnSelect(event, player, object, sender, intid, code, menu_id)
     elseif intid == 4 then
         player:SendListInventory(object, 100013)
     elseif intid == 5 then
-        player:SendListInventory(object, 100014)
-    elseif intid == 6 then
         player:SendListInventory(object, 100015)
-    elseif intid == 7 then
+    elseif intid == 6 then
         player:SendListInventory(object, 100016)
+    elseif intid == 7 then
+        player:SendListInventory(object, 100014)
     elseif intid == 8 then
         player:SendListInventory(object, 100017)
     elseif intid == 9 then
