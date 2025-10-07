@@ -80,7 +80,7 @@ local function OnCreateItem(event, player, item, count)
     if level >= 40 and level < 50 then multiplier = 35 end
     if level >= 50 and level < 59 then multiplier = 37 end
     if level == 60 then multiplier = 75 end
-    local xp = math.floor(level * multiplier)
+    local xp = level * multiplier
     if blacklistedItemIDs[item:GetEntry()] then
         return
     else
@@ -120,7 +120,7 @@ local function OnLootItem(event, player, item, count)
     if level >= 40 and level < 50 then multiplier = 35 end
     if level >= 50 and level < 59 then multiplier = 37 end
     if level == 60 then multiplier = 75 end
-    local xp = math.floor(level * multiplier)
+    local xp = level * multiplier
     if gatheringItemIDs[item:GetEntry()] then
         if enabled == 1 then
             player:GiveXP(xp)
