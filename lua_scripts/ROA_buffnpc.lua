@@ -56,6 +56,7 @@ local function OnSelect(event, player, object, sender, intid, code, menu_id)
 		
 		if money < 500000 then
             player:SendBroadcastMessage("|c979ABDFFNot enough coins to buff your party.|r")
+            player:GossipComplete()
 			return
 		end
 		
