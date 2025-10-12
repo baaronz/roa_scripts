@@ -14,7 +14,7 @@ local function OnHello(event, player, object)
     player:GossipMenuAddItem(2, "Weapons", 0, 10)
     player:GossipMenuAddItem(2, "Dungeon Gear 1", 0, 11)
     player:GossipMenuAddItem(2, "Dungeon Gear 2", 0, 12)
-    player:GossipMenuAddItem(2, "Dungeon Gear 3", 0, 12)
+    player:GossipMenuAddItem(2, "Dungeon Gear 3", 0, 13)
     player:GossipMenuAddItem(0, "Goodbye.", 0, 99)
     player:GossipSendMenu(1, object, 1)
 end
