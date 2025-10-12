@@ -7,7 +7,16 @@ end
 if AIO.AddAddon() then
     local TABLE_NAME = "custom_xp_rates"
     local DEFAULT_XP_RATE = 1.0
-    local PLAYER_MAX_XP_RATE = 100.0
+    local MAX_XP_RATE_UNDER_60 = 10.0
+    local MAX_XP_RATE_LEVEL_60 = 100.0
+    
+    local function GetMaxXPRate(player)
+        if player:GetLevel() < 60 then
+            return MAX_XP_RATE_UNDER_60
+        else
+            return MAX_XP_RATE_LEVEL_60
+        end
+    end
 
     local function OnLogin(event, player)
         local guid = player:GetGUIDLow()
@@ -183,8 +192,9 @@ if AIO.AddAddon() then
                 return
             end
             
-            if newRate > PLAYER_MAX_XP_RATE then
-                player:SendBroadcastMessage("|c979ABDFFERROR: XP rate cannot exceed " .. PLAYER_MAX_XP_RATE .. ". Maximum allowed rate is " .. PLAYER_MAX_XP_RATE .. ".|r")
+            local maxRate = GetMaxXPRate(player)
+            if newRate > maxRate then
+                player:SendBroadcastMessage("|c979ABDFFERROR: XP rate cannot exceed " .. maxRate .. ". Maximum allowed rate is " .. maxRate .. ".|r")
                 return
             end
             
@@ -215,7 +225,21 @@ end
 
 local XPRateModifierAddon = {}
 local isWindowVisible = false
-local PLAYER_MAX_XP_RATE = 100.0  -- Client-side constant to match server
+local MAX_XP_RATE_UNDER_60 = 10.0
+local MAX_XP_RATE_LEVEL_60 = 100.0
+
+local function GetMaxXPRate()
+    local player = UnitName("player")
+    if player then
+        local level = UnitLevel("player")
+        if level < 60 then
+            return MAX_XP_RATE_UNDER_60
+        else
+            return MAX_XP_RATE_LEVEL_60
+        end
+    end
+    return MAX_XP_RATE_UNDER_60
+end
 
 local function CreateXPRateWindow()
     local window = CreateFrame("Frame", "XPRateModifierWindow", UIParent)
@@ -251,7 +275,7 @@ local function CreateXPRateWindow()
     
     window.instructionText = window:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     window.instructionText:SetPoint("TOP", window.currentRateText, "BOTTOM", 0, -8)
-    window.instructionText:SetText("Enter new rate (0.1 - " .. PLAYER_MAX_XP_RATE .. "):")
+    window.instructionText:SetText("Enter new rate (0.1 - " .. GetMaxXPRate() .. "):")
     window.instructionText:SetTextColor(0.8, 0.8, 0.8, 1)
     
     window.editBox = CreateFrame("EditBox", nil, window)
@@ -378,8 +402,9 @@ function XPRateModifierAddon:ApplyRate()
         return
     end
     
-    if rate > PLAYER_MAX_XP_RATE then
-        print("|c979ABDFFXP rate cannot exceed " .. PLAYER_MAX_XP_RATE .. ". Maximum allowed rate is " .. PLAYER_MAX_XP_RATE .. ".|r")
+    local maxRate = GetMaxXPRate()
+    if rate > maxRate then
+        print("|c979ABDFFXP rate cannot exceed " .. maxRate .. ". Maximum allowed rate is " .. maxRate .. ".|r")
         return
     end
     
